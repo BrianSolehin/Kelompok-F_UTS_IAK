@@ -172,8 +172,7 @@
           <td class="p-3 text-right">${item.stok ?? 0}</td>
           ${isSupplier2
             ? `<td class="p-3">${item.deskripsi ?? "-"}</td>`
-            : `<td class="p-3">${item.expired_date ?? "-"}</td>`
-          }
+            : `<td class="p-3">${item.expired_date ?? "-"}</td>`}
           <td class="p-3 text-center">
             <input type="number" min="1" max="${item.stok ?? 999999}" value="1"
                    class="qtyInput w-20 px-2 py-1 border rounded"

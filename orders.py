@@ -1,111 +1,82 @@
 # orders.py
-import requests
-from datetime import datetime
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify
 
+# Nama blueprint "orders" akan membentuk endpoint prefix "orders.*"
 orders_bp = Blueprint("orders", __name__)
 
-# ====== CONFIG ======
-WEBHOOK_TOKEN = "sama-token-di-kedua-sisi"
+# =========================
+# 1) Callback dari Supplier (draft order & opsi distributor)
+# =========================
+@orders_bp.route('/order-callback', methods=['POST'])
+def order_callback():
+    data = request.get_json(silent=True)
 
-SUPPLIER_URLS = {
-    1: "http://192.168.0.29:8000/api/orders",
-    2: "http://192.168.0.214:8000/api/orders"
-}
+    if not data:
+        return jsonify({"error": "Tidak ada data diterima"}), 400
 
-# helper untuk push order ke supplier
-def _push(url, payload):
-    try:
-        r = requests.post(
-            url, json=payload,
-            headers={"Content-Type": "application/json", "X-Webhook-Token": WEBHOOK_TOKEN},
-            timeout=5
+    # Log ringkas di console
+    print("\n=== 📦 CALLBACK DITERIMA DARI SUPPLIER ===")
+    print(f"ID Order Supplier : {data.get('id_order')}")
+    print(f"ID Retail         : {data.get('id_retail')}")
+    print(f"ID Supplier       : {data.get('id_supplier')}")
+    print(f"Total Berat       : {data.get('total_berat')} kg")
+    print(f"Jumlah Item       : {data.get('jumlah_item')}")
+    print("Status Pesanan    :", data.get('message'))
+
+    print("\nPilihan Distributor / Ekspedisi:")
+    distributor_list = data.get('distributor_options', [])
+    for i, dist in enumerate(distributor_list, start=1):
+        print(
+            f"  {i}. {dist.get('nama_distributor')} "
+            f"(ID: {dist.get('id_distributor')}) - "
+            f"Harga: Rp{dist.get('harga_pengiriman')} - "
+            f"Estimasi: {dist.get('estimasi')}"
         )
-        print("[PUSH]", url, r.status_code)
-        return r.json() if r.ok else {"error": r.text}
-    except Exception as e:
-        print("[ERR PUSH]", url, e)
-        return {"error": str(e)}
+    print("=========================================\n")
 
-# ====== ENDPOINT CHECKOUT ======
-@orders_bp.post("/checkout")
-def checkout_cart():
-    data = request.get_json(force=True) or {}
-    id_retail   = data.get("id_retail")
-    id_supplier = data.get("id_supplier")
-    items       = data.get("items", [])
+    # TODO: simpan draft/opsi distributor ke DB retail bila diperlukan
 
-    if not id_retail or not id_supplier:
-        return jsonify({"error": "missing id_retail or id_supplier"}), 400
-    if not items:
-        return jsonify({"error": "cart_empty"}), 400
+    return jsonify({
+        "message": "Retail menerima callback dari supplier",
+        "status": "success"
+    }), 200
 
-    # buat order baru
-    order_id = session.get("order_seq", 0) + 1
-    session["order_seq"] = order_id
 
-    callback_url = request.host_url.rstrip("/") + "/api/orders/callback"
+# =========================
+# 2) Callback RESI dari Supplier (setelah distributor terpilih)
+# =========================
+@orders_bp.route('/resi', methods=['POST'])
+def receive_resi_from_supplier():
+    data = request.get_json(silent=True)
 
-    record = {
-        "order_id": order_id,
+    if not data:
+        return jsonify({"error": "Tidak ada data diterima"}), 400
+
+    print("📦 Callback RESI diterima dari Supplier:")
+    print(data)
+
+    # Ambil data penting
+    id_order = data.get('id_order')
+    id_retail = data.get('id_retail')
+    total_pembayaran = data.get('total_pembayaran')
+    no_resi = data.get('no_resi')
+    eta_delivery_date = data.get('eta_delivery_date')
+
+    # Validasi minimal
+    if not id_order or not no_resi:
+        return jsonify({"error": "Data tidak lengkap (id_order/no_resi)"}), 400
+
+    # TODO: update status order & simpan no_resi ke DB retail
+
+    print(f"🧾 Order {id_order} - No Resi: {no_resi}")
+    print(f"💰 Total Pembayaran: {total_pembayaran}")
+    print(f"🚚 Estimasi Tiba: {eta_delivery_date}")
+
+    return jsonify({
+        "message": "Callback resi dari supplier berhasil diterima",
+        "id_order": id_order,
         "id_retail": id_retail,
-        "id_supplier": id_supplier,
-        "items": items,
-        "created_at": datetime.utcnow().isoformat() + "Z",
-        "status": "CREATED",
-        "callback_url": callback_url
-    }
-
-    # simpan ke session (sementara jadi DB)
-    orders = session.get("orders", [])
-    orders.append(record)
-    session["orders"] = orders
-
-    # push ke supplier
-    sup_url = SUPPLIER_URLS.get(int(id_supplier))
-    if sup_url:
-        _push(sup_url, record)
-
-    return jsonify({"ok": True, "order": record}), 201
-
-# ====== ENDPOINT CALLBACK (supplier nembak balik ke sini) ======
-@orders_bp.post("/callback")
-def supplier_callback():
-    token = request.headers.get("X-Webhook-Token")
-    if token != WEBHOOK_TOKEN:
-        return jsonify({"error": "unauthorized"}), 401
-
-    data = request.get_json(force=True) or {}
-    order_id = data.get("order_id")
-    if not order_id:
-        return jsonify({"error": "missing order_id"}), 400
-
-    orders = session.get("orders", [])
-    updated = False
-    for o in orders:
-        if o.get("order_id") == order_id:
-            o.update(data)   # merge data callback ke order
-            updated = True
-            break
-
-    if not updated:
-        # kalau belum ada ordernya, simpan baru
-        orders.append(data)
-
-    session["orders"] = orders
-    print("📦 Callback dari Supplier diterima:", data)
-    return jsonify({"ok": True, "stored": True})
-
-# ====== ENDPOINT GET ORDER ======
-@orders_bp.get("/<int:order_id>")
-def get_order(order_id):
-    orders = session.get("orders", [])
-    for o in orders:
-        if o.get("order_id") == order_id:
-            return jsonify(o)
-    return jsonify({"error": "not_found"}), 404
-
-# ====== ENDPOINT LIST ORDER ======
-@orders_bp.get("/")
-def list_orders():
-    return jsonify(session.get("orders", []))
+        "no_resi": no_resi,
+        "total_pembayaran": total_pembayaran,
+        "eta_delivery_date": eta_delivery_date
+    }), 200
