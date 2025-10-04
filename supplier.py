@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify
 
 supplier_bp = Blueprint("supplier", __name__)
 
-SUPPLIER_URL = "hhttp://192.168.100.117:5000/api/retail/products"
+SUPPLIER_URL = "http://192.168.100.102:5000/api/retail/products"
 
 def _to_int(v):
     try:
@@ -24,15 +24,32 @@ def _normalize_item(x: dict) -> dict:
         "_source":      "supplier",
     }
 
+def _extract_items(raw):
+    # langsung list
+    if isinstance(raw, list):
+        return raw
+    if not isinstance(raw, dict):
+        return []
+    # kunci umum (top-level)
+    for k in ("products", "data", "items", "result"):
+        v = raw.get(k)
+        if isinstance(v, list):
+            return v
+        if isinstance(v, dict):
+            # kunci umum (nested)
+            for kk in ("products", "items", "data", "result"):
+                vv = v.get(kk) if hasattr(v, "get") else None
+                if isinstance(vv, list):
+                    return vv
+    return []
+
 @supplier_bp.get("/products")
 def products_proxy():
     try:
         r = requests.get(SUPPLIER_URL, timeout=8)
         r.raise_for_status()
         raw = r.json()
-        items = raw if isinstance(raw, list) else (raw.get("data") or raw.get("items") or raw.get("result") or [])
-        if not isinstance(items, list):
-            items = []
+        items = _extract_items(raw)
         normalized = [_normalize_item(it or {}) for it in items]
         return jsonify(normalized)
     except requests.exceptions.RequestException as e:

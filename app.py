@@ -2,24 +2,27 @@
 from flask import Flask, render_template
 from flask_cors import CORS
 
-from orders import orders_bp        # sudah ada
-from supplier import supplier_bp    # <-- tambahkan import
-from supplier2 import supplier2_bp  # <-- tambahkan import
+# Blueprints
+from orders import orders_bp
+from cart import cart_bp
+from supplier import supplier_bp
+from supplier2 import supplier2_bp
 
-app = Flask(__name__)
-app.secret_key = "retail-secret-key"
-CORS(app)
+app = Flask(__name__, template_folder="templates")
+app.secret_key = "retail-secret-key"  # wajib untuk session (keranjang)
+CORS(app, supports_credentials=True)
 
 # REGISTER BLUEPRINTS
-app.register_blueprint(orders_bp,   url_prefix="/api/orders")
-app.register_blueprint(supplier_bp, url_prefix="/api/supplier")   # <-- penting
-app.register_blueprint(supplier2_bp, url_prefix="/api/supplier2") # <-- penting
+app.register_blueprint(cart_bp,      url_prefix="/api/cart")      # <-- penting (keranjang)
+app.register_blueprint(orders_bp,    url_prefix="/api/orders")
+app.register_blueprint(supplier_bp,  url_prefix="/api/supplier")
+app.register_blueprint(supplier2_bp, url_prefix="/api/supplier2")
 
 @app.get("/")
 def index():
     return {"service": "retail", "status": "ok"}
 
-# (opsional) route untuk menampilkan UI katalog
+# UI katalog
 @app.get("/ui/supplier")
 def supplier_ui():
     return render_template("supplier_ui.html")

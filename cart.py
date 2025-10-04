@@ -1,101 +1,86 @@
 # cart.py
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, request, jsonify, session
 
 cart_bp = Blueprint("cart", __name__)
 
+# gunakan session untuk simpan keranjang (per user)
 def _get_cart():
     return session.setdefault("cart", [])
 
-def _save_cart(items):
-    session["cart"] = items
+def _save_cart(cart):
+    session["cart"] = cart
+    session.modified = True
 
 @cart_bp.get("/")
-def get_cart():
-    items = _get_cart()
-    total = sum((it.get("harga", 0) or 0) * (it.get("qty", 0) or 0) for it in items)
-    return jsonify({"items": items, "total": int(total)})
+def cart_view():
+    cart = _get_cart()
+    total = sum((it.get("harga", 0) or 0) * (it.get("qty", 1) or 0) for it in cart)
+    return jsonify({"items": cart, "total": total})
 
 @cart_bp.post("/add")
-def add_to_cart():
-    data = request.get_json(force=True) or {}
-    pid = data.get("id_product")
-    if pid is None:
-        return jsonify({"error":"missing_id_product"}), 400
-    qty = int(data.get("qty") or 1)
-    if qty <= 0: qty = 1
+def cart_add():
+    data = request.get_json(silent=True) or {}
+    if not data.get("id_product"):
+        return jsonify({"error": "id_product wajib"}), 400
+    cart = _get_cart()
 
-    items = _get_cart()
-    for it in items:
-        if str(it.get("id_product")) == str(pid):
-            it["qty"] = it.get("qty", 0) + qty
-            _save_cart(items)
-            return get_cart()
+    # cek kalau barang sudah ada → update qty
+    for it in cart:
+        if str(it["id_product"]) == str(data["id_product"]):
+            it["qty"] += int(data.get("qty", 1))
+            _save_cart(cart)
+            return jsonify({"message": "updated"}), 200
 
-    items.append({
-        "id_product": pid,
-        "nama_product": data.get("nama_product") or "",
-        "harga": int(float(data.get("harga") or 0)),
+    cart.append({
+        "id_product": data["id_product"],
+        "nama_product": data.get("nama_product"),
+        "harga": int(data.get("harga") or 0),
         "stok": int(data.get("stok") or 0),
-        "qty": qty
+        "qty": int(data.get("qty") or 1),
     })
-    _save_cart(items)
-    return get_cart()
-
-@cart_bp.post("/update")
-def update_qty():
-    data = request.get_json(force=True) or {}
-    pid = data.get("id_product")
-    qty = int(data.get("qty") or 0)
-
-    items = _get_cart()
-    new_items = []
-    for it in items:
-        if str(it.get("id_product")) == str(pid):
-            if qty > 0:
-                it["qty"] = qty
-                new_items.append(it)
-        else:
-            new_items.append(it)
-    _save_cart(new_items)
-    return get_cart()
-
-@cart_bp.post("/clear")
-def clear_cart():
-    _save_cart([])
-    return jsonify({"ok": True})
+    _save_cart(cart)
+    return jsonify({"message": "added"}), 200
 
 @cart_bp.post("/bulk_add")
-def bulk_add():
-    """
-    Body:
-    {"items":[{"id_product":..,"nama_product":"..","harga":123,"stok":9,"qty":5}, ...]}
-    """
-    data = request.get_json(force=True) or {}
-    items_in = data.get("items") or []
-    if not isinstance(items_in, list) or not items_in:
-        return jsonify({"error":"empty_items"}), 400
-
+def cart_bulk_add():
+    data = request.get_json(silent=True) or {}
+    items = data.get("items", [])
     cart = _get_cart()
-    for x in items_in:
-        pid = x.get("id_product")
-        if pid is None:
-            continue
-        qty = int(x.get("qty") or 1)
-        if qty <= 0:
-            continue
+    for new_item in items:
         found = False
         for it in cart:
-            if str(it.get("id_product")) == str(pid):
-                it["qty"] = it.get("qty", 0) + qty
+            if str(it["id_product"]) == str(new_item["id_product"]):
+                it["qty"] += int(new_item.get("qty", 1))
                 found = True
                 break
         if not found:
             cart.append({
-                "id_product": pid,
-                "nama_product": x.get("nama_product") or "",
-                "harga": int(float(x.get("harga") or 0)),
-                "stok": int(x.get("stok") or 0),
-                "qty": qty
+                "id_product": new_item.get("id_product"),
+                "nama_product": new_item.get("nama_product"),
+                "harga": int(new_item.get("harga") or 0),
+                "stok": int(new_item.get("stok") or 0),
+                "qty": int(new_item.get("qty") or 1),
             })
     _save_cart(cart)
-    return get_cart()
+    return jsonify({"message": "bulk added"}), 200
+
+@cart_bp.post("/update")
+def cart_update():
+    data = request.get_json(silent=True) or {}
+    id_product = data.get("id_product")
+    qty = int(data.get("qty", 0))
+    cart = _get_cart()
+    for it in cart:
+        if str(it["id_product"]) == str(id_product):
+            if qty <= 0:
+                cart.remove(it)
+            else:
+                it["qty"] = qty
+            break
+    _save_cart(cart)
+    return jsonify({"message": "updated"}), 200
+
+@cart_bp.post("/clear")
+def cart_clear():
+    _save_cart([])
+    return jsonify({"message": "cleared"}), 200

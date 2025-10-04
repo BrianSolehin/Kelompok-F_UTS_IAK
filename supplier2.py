@@ -25,12 +25,12 @@ def _normalize_item(x: dict) -> dict:
     }
 
 @supplier2_bp.get("/products")
-def products_proxy_supplier2():
+def products_proxy():
     try:
         r = requests.get(SUPPLIER2_URL, timeout=8)
         r.raise_for_status()
         raw = r.json()
-        items = raw if isinstance(raw, list) else (raw.get("data") or raw.get("items") or raw.get("result") or raw.get("products") or [])
+        items = raw if isinstance(raw, list) else (raw.get("data") or raw.get("items") or raw.get("result") or [])
         if not isinstance(items, list):
             items = []
         normalized = [_normalize_item(it or {}) for it in items]
