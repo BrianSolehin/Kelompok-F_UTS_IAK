@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Katalog Produk</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-6xl mx-auto p-6 space-y-4">
+    <h1 class="text-2xl font-bold">Katalog Produk</h1>
+
+    <!-- Bar atas -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 items-center">
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-700">Sumber:</label>
+        <select id="sourceSel" class="px-3 py-2 rounded-lg border border-gray-300 w-full">
+          <option value="supplier">Supplier</option>
+          <option value="supplier2">Supplier2</option>
+        </select>
+      </div>
+
+      <div class="flex items-center gap-2 lg:col-span-2">
+        <label for="supplierIdInput" class="text-sm text-gray-700 whitespace-nowrap">ID Supplier:</label>
+        <input id="supplierIdInput" type="text" placeholder="contoh: 99"
+               class="px-3 py-2 rounded-lg border border-gray-300 w-full" />
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="refreshBtn" class="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 w-full">Refresh</button>
+      </div>
+
+      <div class="lg:col-span-3 flex flex-col sm:flex-row gap-3 mt-2">
+        <input id="searchInput" type="search" placeholder="Cari nama / ID / kategori / deskripsi…"
+               class="w-full sm:w-96 px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring" />
+        <select id="sortSel" class="px-3 py-2 rounded-lg border border-gray-300 w-full sm:w-auto">
+          <option value="nama_product">Sort: Nama</option>
+          <option value="harga">Sort: Harga</option>
+          <option value="stok">Sort: Stok</option>
+          <option value="expired_date">Sort: Expired</option>
+          <option value="kategori">Sort: Kategori</option>
+        </select>
+
+        <!-- Tambah Terpilih -->
+        <button id="bulkAddBtn" class="px-3 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700">
+          Tambah Terpilih
+        </button>
+      </div>
+
+      <!-- Tombol Cart -->
+      <div class="flex items-center gap-2">
+        <button id="openCartBtn" class="px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 w-full">
+          Keranjang (<span id="cartCount">0</span>)
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabel -->
+    <div class="overflow-x-auto bg-white rounded-xl shadow">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-100 text-gray-700" id="thead"></thead>
+        <tbody id="tbody" class="divide-y"></tbody>
+      </table>
+    </div>
+
+    <p id="status" class="text-sm text-gray-500"></p>
+  </div>
+
+  <!-- Drawer Keranjang -->
+  <div id="cartDrawer" class="fixed inset-y-0 right-0 w-full sm:w-[420px] bg-white shadow-2xl translate-x-full transition-transform">
+    <div class="p-4 border-b flex items-center justify-between">
+      <h2 class="text-lg font-semibold">Keranjang</h2>
+      <button id="closeCartBtn" class="text-gray-600 hover:text-black">✕</button>
+    </div>
+    <div class="p-4 space-y-2 overflow-y-auto h-[calc(100%-180px)]" id="cartItems"></div>
+    <div class="p-4 border-t space-y-2">
+      <div class="flex items-center justify-between">
+        <span class="font-medium">Total</span>
+        <span id="cartTotal" class="font-semibold">Rp 0</span>
+      </div>
+      <div class="flex gap-2">
+        <button id="clearCartBtn" class="px-3 py-2 rounded-lg border w-1/3">Clear</button>
+        <button id="checkoutBtn" class="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 w-2/3">Checkout</button>
+      </div>
+      <small class="text-gray-500">Checkout membutuhkan ID Supplier terisi.</small>
+    </div>
+  </div>
+
+  <script>
+    const ENDPOINTS = {
+      supplier:  "/api/supplier/products",
+      supplier2: "/api/supplier2/products",
+    };
+
+    const tbody = document.getElementById("tbody");
+    const thead = document.getElementById("thead");
+    const searchInput = document.getElementById("searchInput");
+    const sortSel = document.getElementById("sortSel");
+    const statusEl = document.getElementById("status");
+    const refreshBtn = document.getElementById("refreshBtn");
+    const sourceSel = document.getElementById("sourceSel");
+    const supplierIdInput = document.getElementById("supplierIdInput");
+
+    // Cart UI
+    const cartDrawer = document.getElementById("cartDrawer");
+    const openCartBtn = document.getElementById("openCartBtn");
+    const closeCartBtn = document.getElementById("closeCartBtn");
+    const cartItemsEl = document.getElementById("cartItems");
+    const cartTotalEl = document.getElementById("cartTotal");
+    const cartCountEl = document.getElementById("cartCount");
+    const clearCartBtn = document.getElementById("clearCartBtn");
+    const checkoutBtn = document.getElementById("checkoutBtn");
+    const bulkAddBtn = document.getElementById("bulkAddBtn");
+
+    let DATA = [];
+    let CURRENT_SOURCE = sourceSel.value;
+
+    const rupiah = n =>
+      new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 })
+        .format(n ?? 0);
+
+    // ---------- Catalog ----------
+    function renderHeader() {
+      const isSupplier2 = CURRENT_SOURCE === "supplier2";
+      thead.innerHTML = `
+        <tr>
+          <th class="p-3 text-center"><input id="chkAll" type="checkbox" /></th>
+          <th class="text-left p-3">ID</th>
+          <th class="text-left p-3">Nama</th>
+          ${isSupplier2 ? '<th class="text-left p-3">Kategori</th>' : ''}
+          <th class="text-right p-3">Harga</th>
+          <th class="text-right p-3">Stok</th>
+          ${isSupplier2 ? '<th class="text-left p-3">Deskripsi</th>' : '<th class="text-left p-3">Expired</th>'}
+          <th class="text-center p-3 w-28">Qty</th>
+          <th class="text-center p-3">Aksi</th>
+        </tr>
+      `;
+      setTimeout(() => {
+        const chkAll = document.getElementById("chkAll");
+        if (chkAll) chkAll.addEventListener("change", (e) => {
+          document.querySelectorAll(".rowChk").forEach(c => c.checked = e.target.checked);
+        });
+      }, 0);
+    }
+
+    function render() {
+      const q = searchInput.value.trim().toLowerCase();
+      let rows = DATA.filter(d =>
+        (String(d.nama_product || "").toLowerCase().includes(q)) ||
+        (String(d.id_product || "").toLowerCase().includes(q)) ||
+        (String(d.kategori || "").toLowerCase().includes(q)) ||
+        (String(d.deskripsi || "").toLowerCase().includes(q)) ||
+        (String(d.expired_date || "").toLowerCase().includes(q))
+      );
+
+      const key = sortSel.value;
+      rows.sort((a,b) => {
+        if (["harga","stok"].includes(key)) return (a[key] ?? 0) - (b[key] ?? 0);
+        return String(a[key] ?? "").localeCompare(String(b[key] ?? ""));
+      });
+
+      const isSupplier2 = CURRENT_SOURCE === "supplier2";
+      tbody.innerHTML = rows.map(item => `
+        <tr class="hover:bg-gray-50">
+          <td class="p-3 text-center">
+            <input class="rowChk" type="checkbox" data-id="${item.id_product}">
+          </td>
+          <td class="p-3 font-mono">${item.id_product ?? ""}</td>
+          <td class="p-3">${item.nama_product ?? ""}</td>
+          ${isSupplier2 ? `<td class="p-3">${item.kategori ?? "-"}</td>` : ""}
+          <td class="p-3 text-right">${rupiah(item.harga)}</td>
+          <td class="p-3 text-right">${item.stok ?? 0}</td>
+          ${isSupplier2
+            ? `<td class="p-3">${item.deskripsi ?? "-"}</td>`
+            : `<td class="p-3">${item.expired_date ?? "-"}</td>`
+          }
+          <td class="p-3 text-center">
+            <input type="number" min="1" max="${item.stok ?? 999999}" value="1"
+                   class="qtyInput w-20 px-2 py-1 border rounded"
+                   data-id="${item.id_product}">
+          </td>
+          <td class="p-3 text-center">
+            <button class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+              onclick='addToCart(${JSON.stringify(item.id_product)}, ${JSON.stringify(item.nama_product)}, ${JSON.stringify(item.harga)}, ${JSON.stringify(item.stok)}, getQty("${item.id_product}"))'>
+              Tambah
+            </button>
+          </td>
+        </tr>
+      `).join("");
+
+      statusEl.textContent = `${rows.length} item ditampilkan dari sumber ${CURRENT_SOURCE}${q ? ` (filter: "${q}")` : ""}`;
+    }
+
+    async function load() {
+      statusEl.textContent = "Memuat data…";
+      tbody.innerHTML = "";
+      try {
+        const url = ENDPOINTS[CURRENT_SOURCE];
+        const res = await fetch(url, { headers: { "Accept": "application/json" }});
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json?.error ? `${json.error}: ${json.detail || ""}` : `HTTP ${res.status}`);
+        DATA = Array.isArray(json) ? json : (json.data || json.items || json.products || []);
+        if (!Array.isArray(DATA)) DATA = [];
+        renderHeader();
+        render();
+        statusEl.textContent = `Data termuat dari sumber ${CURRENT_SOURCE} (${DATA.length} item).`;
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = "Gagal memuat data: " + e.message;
+        DATA = [];
+        renderHeader();
+        render();
+      }
+      await refreshCart();
+    }
+
+    // ---------- Helpers ----------
+    function getQty(id) {
+      const el = document.querySelector(`.qtyInput[data-id="${CSS.escape(String(id))}"]`);
+      let q = parseInt(el?.value || "1", 10);
+      if (isNaN(q) || q <= 0) q = 1;
+      const max = parseInt(el?.getAttribute("max") || "0", 10);
+      if (max && q > max) q = max;
+      return q;
+    }
+
+    function findItemById(id) {
+      return DATA.find(d => String(d.id_product) === String(id));
+    }
+
+    // ---------- Cart ----------
+    function openCart() { cartDrawer.style.transform = "translateX(0)"; }
+    function closeCart() { cartDrawer.style.transform = "translateX(100%)"; }
+
+    async function refreshCart() {
+      const res = await fetch("/api/cart/", { credentials: "same-origin", headers: { "Accept": "application/json" }});
+      const json = await res.json().catch(() => ({items:[], total:0}));
+      const items = json.items || [];
+      cartItemsEl.innerHTML = items.map(it => `
+        <div class="flex items-center justify-between border rounded-lg p-2">
+          <div class="min-w-0">
+            <div class="font-medium truncate">${it.nama_product}</div>
+            <div class="text-xs text-gray-500">ID: ${it.id_product} • Stok: ${it.stok}</div>
+            <div class="text-xs">${rupiah(it.harga)} × ${it.qty}</div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button class="px-2 py-1 border rounded" onclick='updateQty(${JSON.stringify(it.id_product)}, ${Math.max(0,(it.qty-1))})'>−</button>
+            <span class="w-6 text-center">${it.qty}</span>
+            <button class="px-2 py-1 border rounded" onclick='updateQty(${JSON.stringify(it.id_product)}, ${it.qty+1})'>+</button>
+          </div>
+        </div>
+      `).join("") || '<div class="text-sm text-gray-500">Keranjang kosong.</div>';
+      cartTotalEl.textContent = rupiah(json.total || 0);
+      cartCountEl.textContent = items.reduce((a,b)=>a+(b.qty||0),0);
+    }
+
+    async function addToCart(id_product, nama_product, harga, stok, qty=1) {
+      const res = await fetch("/api/cart/add", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {"Content-Type":"application/json","Accept":"application/json"},
+        body: JSON.stringify({ id_product, nama_product, harga, stok, qty })
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(()=>({}));
+        statusEl.textContent = "Gagal tambah ke keranjang: " + (e.error || res.status);
+        return;
+      }
+      await refreshCart();
+      statusEl.textContent = `Ditambahkan: ${nama_product} (x${qty})`;
+    }
+
+    async function bulkAddSelected() {
+      const ids = [...document.querySelectorAll(".rowChk:checked")].map(c => c.dataset.id);
+      if (!ids.length) { statusEl.textContent = "Pilih dulu itemnya."; return; }
+
+      const items = ids.map(id => {
+        const it = findItemById(id) || {};
+        return {
+          id_product: it.id_product,
+          nama_product: it.nama_product,
+          harga: it.harga,
+          stok: it.stok,
+          qty: getQty(id)
+        };
+      });
+
+      const res = await fetch("/api/cart/bulk_add", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {"Content-Type":"application/json","Accept":"application/json"},
+        body: JSON.stringify({ items })
+      });
+      const json = await res.json().catch(()=>({}));
+      if (!res.ok) { statusEl.textContent = "Gagal tambah massal: " + (json.error || res.status); return; }
+      await refreshCart();
+      statusEl.textContent = `Ditambahkan ${items.length} item ke keranjang.`;
+    }
+
+    async function updateQty(id_product, qty) {
+      const res = await fetch("/api/cart/update", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {"Content-Type":"application/json","Accept":"application/json"},
+        body: JSON.stringify({ id_product, qty })
+      });
+      if (!res.ok) return;
+      await refreshCart();
+    }
+
+    async function clearCart() {
+      await fetch("/api/cart/clear", { method: "POST", credentials: "same-origin" });
+      await refreshCart();
+    }
+
+    async function checkout() {
+      const id_supplier = supplierIdInput.value?.trim();
+      if (!id_supplier) { statusEl.textContent = "Isi dulu ID Supplier."; return; }
+      statusEl.textContent = "Checkout…";
+      const res = await fetch("/api/orders/checkout", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {"Content-Type":"application/json","Accept":"application/json"},
+        body: JSON.stringify({ id_retail: 1, id_supplier })
+      });
+      const json = await res.json().catch(()=>({}));
+      if (!res.ok) {
+        statusEl.textContent = "Gagal checkout: " + (json.error || res.status);
+        return;
+      }
+      await refreshCart();
+      statusEl.textContent = `Order dibuat: ${json?.order?.order_id || "-"}`;
+      closeCart();
+    }
+
+    // Events
+    searchInput.addEventListener("input", render);
+    sortSel.addEventListener("change", render);
+    refreshBtn.addEventListener("click", load);
+    sourceSel.addEventListener("change", () => { CURRENT_SOURCE = sourceSel.value; searchInput.value = ""; load(); });
+    openCartBtn.addEventListener("click", () => { openCart(); refreshCart(); });
+    closeCartBtn.addEventListener("click", closeCart);
+    clearCartBtn.addEventListener("click", clearCart);
+    checkoutBtn.addEventListener("click", checkout);
+    bulkAddBtn.addEventListener("click", bulkAddSelected);
+
+    // init
+    renderHeader();
+    load();
+  </script>
+</body>
+</html>
