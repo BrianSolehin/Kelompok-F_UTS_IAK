@@ -1,0 +1,139 @@
+{% extends "template.html" %}
+
+{% block title %}Transaksi POS - Retail App{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto p-6 space-y-6">
+  <h1 class="text-2xl font-bold">Transaksi (POS)</h1>
+
+  <!-- Katalog Produk -->
+  <div class="bg-white rounded-xl shadow-sm border p-6">
+    <h2 class="font-semibold mb-4 text-lg">Katalog Gudang</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label class="block text-sm text-gray-600 mb-1">Cari SKU/Nama</label>
+        <input id="searchProduct" type="text" placeholder="P002 / Minyak"
+               class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-600 mb-1">Kategori</label>
+        <select id="filterKategori" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+          <option value="">Semua</option>
+          <option>Sembako</option>
+          <option>Minuman</option>
+          <option>Mie</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="text-left p-3">SKU</th>
+            <th class="text-left p-3">Produk</th>
+            <th class="text-right p-3">Harga</th>
+            <th class="text-right p-3">Stok</th>
+            <th class="text-center p-3 w-24">Qty</th>
+            <th class="text-center p-3 w-28"></th>
+          </tr>
+        </thead>
+        <tbody id="catalogBody" class="divide-y"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Keranjang Transaksi -->
+  <div class="bg-white rounded-xl shadow-sm border p-6">
+    <h2 class="font-semibold mb-4 text-lg">Keranjang Transaksi</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div>
+        <label class="block text-sm text-gray-600 mb-1">Pelanggan</label>
+        <select id="pelanggan" class="w-full px-3 py-2 border rounded-lg">
+          <option>Umum</option>
+          <option>Member</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-600 mb-1">Metode Pembayaran</label>
+        <select id="metode" class="w-full px-3 py-2 border rounded-lg">
+          <option>QRIS</option>
+          <option>CASH</option>
+          <option>CARD</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-600 mb-1">Tanggal</label>
+        <input id="tanggal" type="text" disabled class="w-full px-3 py-2 border rounded-lg bg-gray-50"/>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto mb-4">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="text-left p-3">#</th>
+            <th class="text-left p-3">SKU</th>
+            <th class="text-left p-3">Produk</th>
+            <th class="text-right p-3">Harga</th>
+            <th class="text-center p-3 w-28">Qty</th>
+            <th class="text-right p-3">Subtotal</th>
+            <th class="text-center p-3 w-20"></th>
+          </tr>
+        </thead>
+        <tbody id="cartBody">
+          <tr>
+            <td colspan="7" class="p-4 text-center text-gray-500">Belum ada item</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Total -->
+    <div class="space-y-2 border-t pt-4">
+      <div class="flex justify-between text-sm">
+        <span class="text-gray-600">Subtotal:</span>
+        <strong>Rp <span id="subtotal">0</span></strong>
+      </div>
+      <div class="flex justify-between text-sm">
+        <span class="text-gray-600">PPN 10%:</span>
+        <strong>Rp <span id="ppn">0</span></strong>
+      </div>
+      <div class="flex justify-between text-lg font-semibold border-t pt-2">
+        <span>Total:</span>
+        <span>Rp <span id="grandTotal">0</span></span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 mt-4">
+      <div>
+        <label class="block text-sm text-gray-600 mb-1">Bayar</label>
+        <input id="bayar" type="number" min="0" value="0"
+               class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-600 mb-1">Kembalian</label>
+        <input id="kembali" type="text" disabled value="0"
+               class="w-full px-3 py-2 border rounded-lg bg-gray-50"/>
+      </div>
+    </div>
+
+    <div class="flex gap-3 mt-4">
+      <button id="btnVoid" class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50">
+        Batalkan
+      </button>
+      <button id="btnCheckout" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+        Bayar & Cetak
+      </button>
+    </div>
+
+    <div id="warnStock" class="mt-2 text-sm text-red-600"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_extra %}
+<script src="/static/js/transaksi.js"></script>
+{% endblock %}

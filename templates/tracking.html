@@ -1,0 +1,64 @@
+{% extends "template.html" %}
+
+{% block title %}Tracking - Retail App{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-6 space-y-6">
+  <h1 class="text-2xl font-bold">Tracking Pengiriman</h1>
+
+  <div class="bg-white rounded-xl shadow-sm border p-6">
+    <h2 class="font-semibold mb-4 text-lg">Lacak Paket</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label class="block text-sm text-gray-600 mb-1">Distributor</label>
+        <select id="trackDis" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+          <option>DIS01</option>
+          <option>DIS02</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-600 mb-1">No. Resi</label>
+        <input id="trackResi" type="text" placeholder="RESI-XXXXXX"
+               class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"/>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-3">
+      <button id="btnCekStatus" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        Cek Status
+      </button>
+      <button id="btnMarkDelivered" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+        Tandai DELIVERED
+      </button>
+      <button id="btnReceive" class="px-4 py-2 border rounded-lg hover:bg-gray-50">
+        Terima Barang → Tambah Stok
+      </button>
+    </div>
+
+    <!-- Status Box -->
+    <div id="statusBox" class="hidden mt-6 border-t pt-6">
+      <div class="flex items-center gap-4 mb-4">
+        <span class="text-sm text-gray-600">Status:</span>
+        <span id="statusBadge" class="px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-700">
+          CREATED
+        </span>
+        <span class="text-sm text-gray-600">ETA: <strong id="etaText">-</strong></span>
+      </div>
+      
+      <h3 class="font-semibold mb-2">Riwayat Tracking</h3>
+      <div id="historyList" class="space-y-2"></div>
+    </div>
+  </div>
+
+  <!-- Daftar Resi Aktif -->
+  <div class="bg-white rounded-xl shadow-sm border p-6">
+    <h2 class="font-semibold mb-4 text-lg">Daftar Resi Aktif</h2>
+    <div id="activeResiList" class="space-y-2"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_extra %}
+<script src="/static/js/tracking.js"></script>
+{% endblock %}

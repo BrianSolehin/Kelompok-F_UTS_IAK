@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Retail App{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media (min-width: 1024px) {
+      .layout {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        gap: 0;
+      }
+      .sidebar {
+        height: 100vh;
+        position: sticky;
+        top: 0;
+        align-self: start;
+      }
+    }
+    .nav-link.active { 
+      background: rgb(243 244 246); 
+      font-weight: 600; 
+    }
+  </style>
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar bg-white border-r">
+      <div class="p-4 border-b">
+        <div class="text-lg font-bold">PT Makanan Sehat</div>
+        <div class="text-xs text-gray-500">Retail • End-to-End</div>
+      </div>
+
+      <nav class="p-2 space-y-1">
+        <a href="/ui/supplier" class="nav-link flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-50">
+          <span>📦</span> <span>Restock Supplier</span>
+        </a>
+        <a href="/ui/tracking" class="nav-link flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-50">
+          <span>🚚</span> <span>Tracking</span>
+        </a>
+        <a href="/ui/transaksi" class="nav-link flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-50">
+          <span>🧾</span> <span>Transaksi (POS)</span>
+        </a>
+        <a href="/ui/gudang" class="nav-link flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-50">
+          <span>🏬</span> <span>Gudang</span>
+        </a>
+        <a href="/ui/history" class="nav-link flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-50">
+          <span>📜</span> <span>Semua Transaksi</span>
+        </a>
+      </nav>
+
+      <div class="mt-auto p-4 border-t text-xs text-gray-400">
+        Kasir: <span class="px-2 py-1 bg-indigo-100 text-indigo-900 rounded font-semibold">KSR-01</span>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="min-h-screen">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <footer class="py-6 text-center text-gray-400 text-sm">
+    © 2025 Retail App
+  </footer>
+
+  {% block body_extra %}{% endblock %}
+  
+  <script>
+    // Auto-activate sidebar menu based on current path
+    document.addEventListener('DOMContentLoaded', () => {
+      const currentPath = window.location.pathname;
+      document.querySelectorAll('.nav-link').forEach(link => {
+        if (link.getAttribute('href') === currentPath) {
+          link.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
