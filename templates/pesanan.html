@@ -1,0 +1,193 @@
+{% extends "template.html" %}
+
+{% block title %}Semua Transaksi - Retail App{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto p-6 space-y-6">
+  <h1 class="text-2xl font-bold">Semua Transaksi</h1>
+
+  <div class="card-modern p-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+      <div>
+        <label class="block text-sm text-gray-600 mb-1">Status</label>
+        <select id="fltStatus" class="w-full px-3 py-2 border rounded-lg">
+          <option value="">Semua</option>
+          <option value="OPEN">OPEN</option>
+          <option value="PAID">PAID</option>
+          <option value="VOID">VOID</option>
+        </select>
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-sm text-gray-600 mb-1">Cari ID/Pelanggan</label>
+        <input id="fltQ" type="text" placeholder="123 / Umum / Member"
+               class="w-full px-3 py-2 border rounded-lg"/>
+      </div>
+      <div class="flex items-end">
+        <button id="btnReload" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full">
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="p-3 text-left">ID</th>
+            <th class="p-3 text-left">Pelanggan</th>
+            <th class="p-3 text-left">Metode</th>
+            <th class="p-3 text-left">Status</th>
+            <th class="p-3 text-right">Total</th>
+            <th class="p-3 text-left">Tanggal</th>
+            <th class="p-3 text-center w-28">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="trxBody" class="divide-y">
+          <tr><td colspan="7" class="p-4 text-center text-gray-500">Memuat...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Drawer detail -->
+  <div id="drawer" class="hidden fixed inset-0 bg-black/30 z-40">
+    <div class="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-6 overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold">Detail Transaksi</h3>
+        <button id="btnClose" class="px-3 py-1 border rounded-lg hover:bg-gray-50">Tutup</button>
+      </div>
+      <div id="detailBox" class="space-y-3 text-sm"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+// ===== Helpers
+const fmtRp = (v) => Number(v || 0).toLocaleString("id-ID");
+
+// ===== Elements
+const el = {
+  body: document.getElementById("trxBody"),
+  status: document.getElementById("fltStatus"),
+  q: document.getElementById("fltQ"),
+  reload: document.getElementById("btnReload"),
+  drawer: document.getElementById("drawer"),
+  close: document.getElementById("btnClose"),
+  detail: document.getElementById("detailBox"),
+};
+
+// ===== API
+async function apiGet(url){
+  const r = await fetch(url, {credentials:"include"});
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ===== Render List
+async function loadList(){
+  const st = el.status.value || "";
+  const q  = el.q.value || "";
+  const p  = new URLSearchParams();
+  if(st) p.set("status", st);
+  if(q)  p.set("q", q);
+  const qs = p.toString() ? `?${p.toString()}` : "";
+  el.body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-500">Memuat...</td></tr>`;
+  try{
+    const data = await apiGet(`/api/pos${qs}`);
+    const items = data.items || [];
+    if(!items.length){
+      el.body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-500">Tidak ada data</td></tr>`;
+      return;
+    }
+    el.body.innerHTML = "";
+    for(const it of items){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="p-3">${it.id_transaksi}</td>
+        <td class="p-3">${it.customer_id}</td>
+        <td class="p-3">${(it.metode_bayar||"-").toUpperCase()}</td>
+        <td class="p-3">${it.status}</td>
+        <td class="p-3 text-right">Rp ${fmtRp(it.total_harga)}</td>
+        <td class="p-3">${new Date(it.tanggal).toLocaleString("id-ID")}</td>
+        <td class="p-3 text-center">
+          <button class="px-3 py-1 border rounded-lg hover:bg-gray-50" data-id="${it.id_transaksi}">
+            Detail
+          </button>
+        </td>
+      `;
+      tr.querySelector("button").addEventListener("click", () => openDetail(it.id_transaksi));
+      el.body.appendChild(tr);
+    }
+  }catch(e){
+    el.body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-600">Gagal memuat: ${e.message}</td></tr>`;
+  }
+}
+
+// ===== Detail
+async function openDetail(id){
+  try{
+    const data = await apiGet(`/api/pos/${id}`);
+    const h = data.header || {};
+    const items = data.items || [];
+    let rows = items.map((x, i)=>`
+      <tr>
+        <td class="p-2">${i+1}</td>
+        <td class="p-2">${x.sku}</td>
+        <td class="p-2">${x.nama}</td>
+        <td class="p-2 text-right">Rp ${fmtRp(x.harga)}</td>
+        <td class="p-2 text-center">${x.qty}</td>
+        <td class="p-2 text-right">Rp ${fmtRp(Number(x.qty)*Number(x.harga))}</td>
+      </tr>
+    `).join("")
+
+    el.detail.innerHTML = `
+      <div class="grid grid-cols-2 gap-3">
+        <div><div class="text-gray-500">ID</div><div class="font-semibold">${h.id_transaksi}</div></div>
+        <div><div class="text-gray-500">Tanggal</div><div>${new Date(h.tanggal).toLocaleString("id-ID")}</div></div>
+        <div><div class="text-gray-500">Pelanggan</div><div>${h.customer_id}</div></div>
+        <div><div class="text-gray-500">Metode</div><div>${(h.metode_bayar||"-").toUpperCase()}</div></div>
+        <div><div class="text-gray-500">Status</div><div>${h.status}</div></div>
+        <div><div class="text-gray-500">Total</div><div class="font-semibold">Rp ${fmtRp(h.total_harga)}</div></div>
+      </div>
+
+      <div class="mt-4">
+        <h4 class="font-semibold mb-2">Item</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="p-2 text-left">#</th>
+                <th class="p-2 text-left">SKU</th>
+                <th class="p-2 text-left">Produk</th>
+                <th class="p-2 text-right">Harga</th>
+                <th class="p-2 text-center">Qty</th>
+                <th class="p-2 text-right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y">${rows || `<tr><td colspan="6" class="p-3 text-center text-gray-500">Tidak ada item</td></tr>`}</tbody>
+          </table>
+        </div>
+
+        <div class="mt-4 border-t pt-3 text-sm">
+          <div class="flex justify-between"><span>Subtotal</span><span>Rp ${fmtRp(data.calc.subtotal)}</span></div>
+          <div class="flex justify-between"><span>PPN 10%</span><span>Rp ${fmtRp(data.calc.ppn)}</span></div>
+          <div class="flex justify-between font-semibold text-lg"><span>Total</span><span>Rp ${fmtRp(data.calc.total)}</span></div>
+        </div>
+      </div>
+    `;
+    el.drawer.classList.remove("hidden");
+  }catch(e){
+    alert("Gagal memuat detail: " + e.message);
+  }
+}
+
+el.close.addEventListener("click", ()=> el.drawer.classList.add("hidden"));
+el.reload.addEventListener("click", loadList);
+el.status.addEventListener("change", loadList);
+el.q.addEventListener("input", ()=> { /* debounce ringan */ clearTimeout(window.__t); window.__t=setTimeout(loadList, 300); });
+
+loadList();
+</script>
+{% endblock %}

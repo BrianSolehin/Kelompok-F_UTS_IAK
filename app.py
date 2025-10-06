@@ -54,15 +54,14 @@ def create_app():
     except Exception as e:
         print("WARN: gagal load supplier2_bp:", e)
 
-    # === POS / TRANSAKSI ===
+    # === POS / TRANSAKSI API ===
     try:
-        # Pastikan file bernama transaksi.py dan di dalamnya ada: pos_bp = Blueprint("pos", __name__)
         from transaksi import pos_bp
-        app.register_blueprint(pos_bp)  # tanpa prefix: rute sudah lengkap di file transaksi.py
+        app.register_blueprint(pos_bp)  # rute API lengkap di transaksi.py
     except Exception as e:
         print("WARN: gagal load pos_bp:", e)
 
-    # === get_product receiver (opsional) ===
+    # (opsional) receiver untuk event distributor
     try:
         from get_product import receiver_bp
         app.register_blueprint(receiver_bp)   # /api/distributor-events
@@ -86,12 +85,22 @@ def create_app():
     def ui_gudang():
         return render_template("gudang.html")
 
-    # --- Tambahan spesifik untuk halaman POS (hindari ketabrak catch-all) ---
+    # Satu-satunya endpoint UI POS
     @app.get("/ui/transaksi")
     def ui_transaksi():
         return render_template("transaksi.html")
 
-    # Catch-all untuk render template lain dengan validasi nama
+    # ========== (BARU) UI: DAFTAR TRANSAKSI ==========
+    @app.get("/ui/semua-transaksi")
+    def ui_semua_transaksi():
+        return render_template("pesanan.html")
+
+    # Alias opsional
+    @app.get("/ui/pesanan")
+    def ui_pesanan_alias():
+        return render_template("pesanan.html")
+
+    # Catch-all untuk template lain
     @app.get("/ui/<path:name>")
     def ui_by_name(name: str):
         if not re.fullmatch(r"[a-zA-Z0-9_\-\/]+", name or ""):
@@ -181,8 +190,7 @@ def create_app():
             if harga_jual is None:
                 sql = text(f"""
                     UPDATE {TABLE}
-                    SET quantity = quantity + :qty,
-                        updated_at = NOW()
+                    SET quantity = quantity + :qty, updated_at = NOW()
                     WHERE id_barang = :sku
                 """)
                 params = {"qty": qty, "sku": sku}

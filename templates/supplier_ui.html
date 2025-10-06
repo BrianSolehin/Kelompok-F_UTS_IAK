@@ -29,7 +29,14 @@
   }
   .btn-primary:hover { opacity: .95; transform: translateY(-1px); }
 
-  .drawer-overlay { backdrop-filter: blur(4px); background: rgba(0, 0, 0, 0.3); }
+  .cart-section {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+  }
+  .cart-section.show {
+    max-height: 2000px;
+  }
 </style>
 {% endblock %}
 
@@ -104,69 +111,76 @@
 
   <!-- Status -->
   <p id="status" class="text-sm text-gray-600 px-4 py-3 bg-white rounded-xl border border-gray-200"></p>
-</div>
 
-<!-- Drawer Keranjang -->
-<div id="cartOverlay" class="fixed inset-0 drawer-overlay hidden z-40" onclick="closeCart()"></div>
-<aside id="cartDrawer" class="fixed right-0 top-0 h-screen w-full sm:w-[480px] bg-white shadow-2xl translate-x-full transition-transform z-50">
-  <div class="sticky top-0 z-10 bg-gradient-to-r from-purple-600 to-indigo-600 p-6 flex items-center justify-between">
-    <div>
-      <h2 class="text-xl font-bold text-white">Keranjang Belanja</h2>
-      <p class="text-purple-100 text-sm">Review pesanan Anda</p>
-    </div>
-    <button id="closeCartBtn" class="text-white hover:bg-white/20 rounded-lg p-2 transition-all">✕</button>
-  </div>
-
-  <div class="px-6 pb-44 overflow-y-auto h-[calc(100vh-120px)]" id="cartScroll">
-    <div class="space-y-3 pt-4" id="cartItems"></div>
-
-    <!-- Pilih Distributor -->
-    <section id="cartDist" class="mt-8 hidden">
-      <header class="flex items-center justify-between mb-4">
+  <!-- KERANJANG SECTION - DI BAWAH PRODUK -->
+  <div id="cartSection" class="cart-section">
+    <div class="card-modern p-6">
+      <div class="flex items-center justify-between mb-6">
         <div>
-          <h3 class="text-lg font-semibold text-gray-800">Pilih Distributor</h3>
-          <p id="cartDistInfo" class="text-sm text-gray-500">Pilih opsi pengiriman</p>
+          <h2 class="text-2xl font-bold text-gray-800">🛒 Keranjang Belanja</h2>
+          <p class="text-gray-600 text-sm mt-1">Review pesanan Anda</p>
         </div>
-        <span id="cartDistOrder" class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-lg"></span>
-      </header>
-
-      <div id="cartDistLoading" class="hidden mt-3 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center text-gray-600">
-        <div class="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-        Memuat opsi distributor…
+        <button id="closeCartBtn" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">✕</button>
       </div>
 
-      <div id="cartDistEmpty" class="hidden mt-3 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center text-gray-600">
-        Belum ada opsi distributor untuk order ini.
-        <button id="reloadDistBtnEmpty" class="ml-2 text-purple-600 underline font-medium">Muat ulang</button>
+      <!-- Cart Items -->
+      <div class="space-y-3 mb-6" id="cartItems">
+        <div class="text-center text-gray-500 py-8">🛒<br>Keranjang kosong</div>
       </div>
 
-      <div id="cartDistOptions" class="mt-3 space-y-3"></div>
-
-      <div class="mt-4 flex items-center gap-3">
-        <button id="reloadDistBtn" class="px-4 py-2.5 rounded-xl border-2 border-gray-200 hover:bg-gray-50 transition-all font-medium">🔄 Muat ulang</button>
-        <button id="confirmDistBtn" class="flex-1 px-4 py-2.5 btn-primary text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg" disabled>✓ Konfirmasi Distributor</button>
+      <!-- Total & Actions -->
+      <div class="border-t-2 border-gray-200 pt-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <span class="font-semibold text-gray-700 text-lg">Total Pembayaran</span>
+          <span id="cartTotal" class="font-bold text-3xl text-purple-600">Rp 0</span>
+        </div>
+        <div class="flex gap-3">
+          <button id="clearCartBtn" class="px-6 py-3 rounded-xl border-2 border-gray-200 hover:bg-gray-50 font-medium transition-all flex-1">
+            🗑 Clear
+          </button>
+          <button id="checkoutBtn" class="px-6 py-3 rounded-xl btn-primary text-white font-medium shadow-lg flex-1">
+            💳 Checkout
+          </button>
+        </div>
+        <small class="text-gray-500 block text-center">Pastikan ID Supplier sudah terisi</small>
       </div>
-    </section>
 
-    <!-- Info Resi -->
-    <section id="cartResi" class="hidden mt-8 border-2 border-green-200 rounded-xl p-4 bg-green-50">
-      <h3 class="font-semibold text-green-800 mb-2">✓ Informasi Pengiriman</h3>
-      <div id="cartResiInfo" class="text-sm text-green-700"></div>
-    </section>
-  </div>
+      <!-- Pilih Distributor -->
+      <section id="cartDist" class="mt-8 hidden">
+        <header class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800">Pilih Distributor</h3>
+            <p id="cartDistInfo" class="text-sm text-gray-500">Pilih opsi pengiriman</p>
+          </div>
+          <span id="cartDistOrder" class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-lg"></span>
+        </header>
 
-  <div class="fixed right-0 bottom-0 w-full sm:w-[480px] bg-white border-t-2 border-gray-200 p-6 space-y-4 shadow-lg">
-    <div class="flex items-center justify-between">
-      <span class="font-semibold text-gray-700">Total Pembayaran</span>
-      <span id="cartTotal" class="font-bold text-2xl text-purple-600">Rp 0</span>
+        <div id="cartDistLoading" class="hidden mt-3 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center text-gray-600">
+          <div class="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          Memuat opsi distributor…
+        </div>
+
+        <div id="cartDistEmpty" class="hidden mt-3 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center text-gray-600">
+          Belum ada opsi distributor untuk order ini.
+          <button id="reloadDistBtnEmpty" class="ml-2 text-purple-600 underline font-medium">Muat ulang</button>
+        </div>
+
+        <div id="cartDistOptions" class="mt-3 space-y-3"></div>
+
+        <div class="mt-4 flex items-center gap-3">
+          <button id="reloadDistBtn" class="px-4 py-2.5 rounded-xl border-2 border-gray-200 hover:bg-gray-50 transition-all font-medium">🔄 Muat ulang</button>
+          <button id="confirmDistBtn" class="flex-1 px-4 py-2.5 btn-primary text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg" disabled>✓ Konfirmasi Distributor</button>
+        </div>
+      </section>
+
+      <!-- Info Resi -->
+      <section id="cartResi" class="hidden mt-8 border-2 border-green-200 rounded-xl p-4 bg-green-50">
+        <h3 class="font-semibold text-green-800 mb-2">✓ Informasi Pengiriman</h3>
+        <div id="cartResiInfo" class="text-sm text-green-700"></div>
+      </section>
     </div>
-    <div class="flex gap-3">
-      <button id="clearCartBtn" class="px-4 py-3 rounded-xl border-2 border-gray-200 hover:bg-gray-50 font-medium transition-all w-1/3">🗑️ Clear</button>
-      <button id="checkoutBtn" class="px-4 py-3 rounded-xl btn-primary text-white font-medium shadow-lg w-2/3">💳 Checkout</button>
-    </div>
-    <small class="text-gray-500 block text-center">Pastikan ID Supplier sudah terisi</small>
   </div>
-</aside>
+</div>
 {% endblock %}
 
 {% block body_extra %}
@@ -192,8 +206,7 @@
   const sourceSel = document.getElementById("sourceSel");
   const supplierIdInput = document.getElementById("supplierIdInput");
 
-  const cartDrawer = document.getElementById("cartDrawer");
-  const cartOverlay = document.getElementById("cartOverlay");
+  const cartSection = document.getElementById("cartSection");
   const openCartBtn = document.getElementById("openCartBtn");
   const closeCartBtn = document.getElementById("closeCartBtn");
   const cartItemsEl = document.getElementById("cartItems");
@@ -229,8 +242,11 @@
   const sourceToSupplierId = (src) => (src === 'supplier2' ? 2 : 1);
 
   // ======= UI HELPERS =======
-  function openCart(){ cartDrawer.style.transform = "translateX(0)"; cartOverlay.classList.remove('hidden'); }
-  function closeCart(){ cartDrawer.style.transform = "translateX(100%)"; cartOverlay.classList.add('hidden'); }
+  function openCart(){ 
+    cartSection.classList.add('show');
+    setTimeout(() => cartSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+  }
+  function closeCart(){ cartSection.classList.remove('show'); }
 
   function renderHeader() {
     const isSupplier2 = CURRENT_SOURCE === "supplier2";
@@ -585,7 +601,7 @@
   async function checkout() {
     const id_supplier = (supplierIdInput.value || "").trim();
     if (!id_supplier) {
-      statusEl.textContent = "⚠️ Isi dulu ID Supplier.";
+      statusEl.textContent = "⚠ Isi dulu ID Supplier.";
       supplierIdInput.focus();
       return;
     }
@@ -645,7 +661,7 @@
 
       load();
     } catch (e) {
-      statusEl.textContent = "⚠️ " + e.message + " • Klik 'Muat ulang' di panel distributor.";
+      statusEl.textContent = "⚠ " + e.message + " • Klik 'Muat ulang' di panel distributor.";
       // pada kegagalan, tetap tampilkan panel distributor tapi kosong
       window.currentOrderId = window.currentOrderId || null;
       showCartDistributor({ orderId: window.currentOrderId, options: [], loading: false });

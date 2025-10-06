@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify
 
 supplier_bp = Blueprint("supplier", __name__)
 
-SUPPLIER_URL = "http://10.16.126.119:5000/api/retail/products"
+SUPPLIER_URL = "https://intervascular-harmony-unministrant.ngrok-free.dev/api/retail/products"
 
 def _to_int(v):
     try:

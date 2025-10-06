@@ -1,4 +1,13 @@
 # transaksi.py
+# --- PATCH ANTI-DOUBLE-IMPORT (TIDAK UBAH app.py) ----------------------------
+# Ketika menjalankan `python app.py`, modul aktif bernama "__main__".
+# Baris di bawah memastikan modul yang sama bisa diimpor dengan nama "app",
+# sehingga `from app import db` menunjuk ke instance yang sama (bukan salinan baru).
+import sys as _sys
+if "app" not in _sys.modules and "__main__" in _sys.modules:
+    _sys.modules["app"] = _sys.modules["__main__"]
+# -----------------------------------------------------------------------------
+
 from flask import Blueprint, jsonify, request
 from sqlalchemy import text
 from app import db  # menggunakan instance SQLAlchemy dari app.py
@@ -19,15 +28,46 @@ def _map_metode(v: str) -> str:
     return {"CASH": "cash", "QRIS": "qris", "CARD": "card"}.get(v, "cash")
 
 
+# ===================== API: LIST TRANSAKSI (BARU) =====================
+@pos_bp.get("/api/pos")
+def pos_list():
+    """
+    Query params (opsional):
+      - status: OPEN | PAID | VOID
+      - q: cari id / customer
+      - limit: default 50
+    """
+    status = (request.args.get("status") or "").strip().upper()
+    q      = (request.args.get("q") or "").strip()
+    limit  = int(request.args.get("limit") or 50)
+
+    conds = []
+    params = {"limit": limit}
+    if status in {"OPEN", "PAID", "VOID"}:
+        conds.append("status = :status")
+        params["status"] = status
+    if q:
+        conds.append("(CAST(id_transaksi AS CHAR) LIKE :q OR customer_id LIKE :q)")
+        params["q"] = f"%{q}%"
+
+    where_sql = ("WHERE " + " AND ".join(conds)) if conds else ""
+    rows = db.session.execute(text(f"""
+        SELECT id_transaksi, customer_id, total_harga, metode_bayar, status, tanggal
+        FROM transaksi
+        {where_sql}
+        ORDER BY tanggal DESC, id_transaksi DESC
+        LIMIT :limit
+    """), params).mappings().all()
+
+    return jsonify({"items": [dict(r) for r in rows]}), 200
+
+
 # ===================== API: BUKA TRANSAKSI =====================
 @pos_bp.post("/api/pos/open")
 def pos_open():
     """
     Body JSON (opsional):
-      {
-        "pelanggan": "Umum",
-        "metode": "CASH" | "QRIS" | "CARD"
-      }
+      { "pelanggan": "Umum", "metode": "CASH" | "QRIS" | "CARD" }
     """
     data = request.get_json(silent=True) or {}
     customer_id = (data.get("pelanggan") or "Umum").strip()
@@ -94,12 +134,12 @@ def pos_get(trx_id):
 def pos_add_item(trx_id):
     """
     Body JSON:
-      { "sku": "P001", "qty": 2, "harga": 12000 }  # harga optional (default pakai harga_jual)
+      { "sku": "P001", "qty": 2, "harga": 12000 }  # harga optional (default harga_jual)
     """
     data = request.get_json(silent=True) or {}
     sku = (data.get("sku") or "").strip()
     qty = int(data.get("qty") or 0)
-    harga = data.get("harga")  # None => pakai harga_jual dari tabel barang
+    harga = data.get("harga")  # None => harga_jual
 
     if not sku or qty <= 0:
         return jsonify({"error": "sku/qty tidak valid"}), 400
@@ -201,10 +241,10 @@ def pos_pay(trx_id):
     """
     Body JSON:
       { "metode": "CASH|QRIS|CARD", "bayar": 100000 }
-    - Validasi stok: harus cukup.
-    - Hitung PPN 10%.
-    - Kurangi stok di tabel barang jika sukses.
-    - Update transaksi menjadi PAID + simpan bayar/kembali.
+    - Validasi stok
+    - Hitung PPN 10%
+    - Kurangi stok barang
+    - Update transaksi jadi PAID + simpan bayar/kembali
     """
     data = request.get_json(silent=True) or {}
     metode = _map_metode(data.get("metode") or "CASH")
@@ -241,11 +281,7 @@ def pos_pay(trx_id):
         qty = int(it["qty"])
         subtotal += qty * float(it["harga"])
         if int(it["stok"] or 0) < qty:
-            kurang.append({
-                "sku": it["sku"],
-                "stok": int(it["stok"] or 0),
-                "butuh": qty
-            })
+            kurang.append({"sku": it["sku"], "stok": int(it["stok"] or 0), "butuh": qty})
     if kurang:
         return jsonify({"error": "stok_kurang", "detail": kurang}), 409
 
@@ -261,8 +297,7 @@ def pos_pay(trx_id):
             db.session.execute(
                 text(f"""
                     UPDATE {TABLE_BARANG}
-                    SET quantity = quantity - :q,
-                        updated_at = NOW()
+                    SET quantity = quantity - :q, updated_at = NOW()
                     WHERE id_barang = :sku
                 """),
                 {"q": int(it["qty"]), "sku": it["sku"]}

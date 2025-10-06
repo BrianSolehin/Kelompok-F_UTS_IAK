@@ -10,14 +10,14 @@ orders_bp = Blueprint("orders", __name__)
 # =========================
 SUPPLIERS = {
     1: {  # SUPPLIER 1 (LAN)
-        "checkout_url": "http://10.16.126.119:5000/api/retail/orders",
-        "choose_distributor_url": "http://10.16.126.119:5000/api/retail/choose-distributor",
+        "checkout_url": "https://intervascular-harmony-unministrant.ngrok-free.dev/api/retail/orders",
+        "choose_distributor_url": "https://intervascular-harmony-unministrant.ngrok-free.dev/api/retail/choose-distributor",
         "items_adapter": lambda cart: [
             {"product_id": int(it["id_product"]), "quantity": int(it["qty"])} for it in cart
         ],
         "payload_adapter": lambda id_retail, id_supplier, items: {
             "id_retail": str(id_retail),
-            "id_supplier": str(id_supplier),
+            "id_supplier": int(id_supplier),
             "items": items,
         },
         "choose_payload": lambda id_order, id_distributor: {
@@ -52,6 +52,98 @@ def _get_supplier_cfg(id_supplier: int):
     if not cfg:
         raise KeyError(f"id_supplier {id_supplier} belum dikonfigurasi")
     return cfg
+
+
+def _extract_distributor_options_from_payload(data: dict):
+    """
+    Terima bentuk data dari supplier:
+      - Format baru: {"distributor_options": [{...}, {...}]}
+      - Format lama: {"ongkir": {"1": {...}, "2": {...}}}
+    Return list opsi distributor yang sudah dinormalisasi untuk UI.
+    """
+    options = []
+    if not isinstance(data, dict):
+        return options
+
+    # -------- Format baru: langsung list ----------
+    raw_opts = data.get("distributor_options")
+    if isinstance(raw_opts, list) and raw_opts:
+        for v in raw_opts:
+            if not isinstance(v, dict):
+                continue
+            options.append({
+                "id_distributor":   v.get("id_distributor"),
+                "nama_distributor": v.get("nama_distributor") or v.get("name"),
+                "harga_pengiriman": v.get("harga_pengiriman") or v.get("harga") or 0,
+                "estimasi":         v.get("estimasi") or v.get("eta_text") or v.get("eta_delivery_date") or "-",
+                "quote_url":        v.get("url"),
+                "quote_id":         v.get("quote_id"),
+            })
+
+    # -------- Format lama: dict ongkir ----------
+    if not options and isinstance(data.get("ongkir"), dict):
+        ongkir = data["ongkir"]
+        for _, v in ongkir.items():
+            if not isinstance(v, dict):
+                continue
+            rr = v.get("raw_response") or {}
+            estimasi = (
+                v.get("estimasi")
+                or rr.get("eta_text")
+                or (f"{rr.get('eta_days')} hari" if rr.get("eta_days") is not None else None)
+                or rr.get("eta_delivery_date")
+                or "-"
+            )
+            options.append({
+                "id_distributor":   v.get("id_distributor") or rr.get("id_distributor"),
+                "nama_distributor": v.get("nama_distributor") or rr.get("nama_distributor") or rr.get("distributor_name"),
+                "harga_pengiriman": v.get("harga") or rr.get("harga_pengiriman") or 0,
+                "estimasi":         estimasi,
+                "quote_url":        v.get("url"),
+                "quote_id":         rr.get("quote_id"),
+            })
+    return options
+
+
+def _merge_resi_into_draft(id_order: int, upstream: dict):
+    """
+    Ambil info resi/total/ETA dari response supplier dan simpan ke draft.
+    Dipakai saat choose_distributor (dan bisa dipakai saat checkout bila perlu).
+    """
+    oid = int(id_order)
+    d = ORDER_DRAFTS.setdefault(oid, {})
+    if not isinstance(upstream, dict):
+        upstream = {}
+
+    # Normalisasi berbagai kemungkinan nama field
+    no_resi = (
+        upstream.get("no_resi")
+        or upstream.get("resi")
+        or upstream.get("tracking_number")
+        or upstream.get("trackingNo")
+    )
+    if no_resi:
+        d["no_resi"] = no_resi
+
+    total = upstream.get("total_pembayaran")
+    if total is None:
+        total = upstream.get("total") or upstream.get("amount")
+    if total is not None:
+        d["total_pembayaran"] = total
+
+    eta = (
+        upstream.get("eta_delivery_date")
+        or upstream.get("eta_text")
+        or upstream.get("eta")
+        or upstream.get("estimated_delivery")
+    )
+    if eta:
+        d["eta_delivery_date"] = eta
+
+    # simpan raw untuk debug
+    raw = d.get("_raw", {})
+    raw["choose_resp"] = upstream
+    d["_raw"] = raw
 
 
 # =========================
@@ -99,7 +191,7 @@ def checkout_order():
     payload = cfg["payload_adapter"](id_retail, id_supplier, items)
 
     # ===== Tambah callback URL supaya supplier tahu harus callback ke mana
-    base = request.host_url  # contoh: "http://127.0.0.1:5000/"
+    base = request.host_url  # contoh: "127.0.0.1:5000/"
     payload["callback_url"] = urljoin(base, "/api/orders/order-callback")
     payload["resi_callback_url"] = urljoin(base, "/api/orders/resi")
 
@@ -107,6 +199,7 @@ def checkout_order():
     print("[checkout] ->", cfg["checkout_url"])
     print("[checkout] payload:", payload)
 
+    upstream_resp = {}
     upstream_id = None
     try:
         r = requests.post(cfg["checkout_url"], json=payload, timeout=15)
@@ -114,9 +207,9 @@ def checkout_order():
         print("[checkout] upstream body:", (r.text or "")[:1000])
         r.raise_for_status()
         try:
-            resp = r.json()
+            upstream_resp = r.json()
         except ValueError:
-            resp = {"message": "OK"}
+            upstream_resp = {"message": "OK"}
     except requests.exceptions.HTTPError as e:
         status = e.response.status_code if e.response else None
         body = e.response.text[:1000] if (e.response and e.response.text) else ""
@@ -132,34 +225,51 @@ def checkout_order():
         print("[checkout][UnknownError]", repr(e))
         return jsonify({"error": "unknown_upstream_error", "detail": str(e)}), 502
 
-    # ===== HOTFIX: buat/merge draft lokal jika upstream memberi id_order (PRESERVE existing)
+    # ===== Merge draft lokal: isi opsi distributor (dan resi jika ada) dari response checkout
     try:
         upstream_id = (
-            (resp or {}).get("id_order")
-            or (resp or {}).get("order_id")
-            or (resp or {}).get("id")
+            (upstream_resp or {}).get("id_order")
+            or (upstream_resp or {}).get("order_id")
+            or (upstream_resp or {}).get("id")
         )
         if upstream_id:
             upstream_id = int(upstream_id)
 
-            # Ambil jika sudah ada (mis. sudah diisi callback)
+            # Ambil jika sudah ada (mis. sudah diisi callback sebelumnya)
             existing = ORDER_DRAFTS.get(upstream_id) or {}
 
-            # Pertahankan opsi distributor yang sudah ada (jangan direset)
-            existing_opts = existing.get("distributor_options") if isinstance(existing.get("distributor_options"), list) else []
+            # Extract opsi distributor dari RESPON checkout (format lama/baru)
+            extracted_opts = _extract_distributor_options_from_payload(upstream_resp)
 
-            # Merge aman: yang sudah ada dipertahankan
+            # Jika existing sudah punya opsi, merge tanpa duplikat
+            existing_opts = existing.get("distributor_options") if isinstance(existing.get("distributor_options"), list) else []
+            merged_opts = []
+            seen = set()
+            for opt in (existing_opts + extracted_opts):
+                key = (opt.get("id_distributor"), opt.get("harga_pengiriman"), opt.get("estimasi"))
+                if key in seen:
+                    continue
+                seen.add(key)
+                merged_opts.append(opt)
+
             ORDER_DRAFTS[upstream_id] = {
-                # Prioritas data existing agar tidak hilang
+                # preserve existing fields
                 **existing,
                 "id_order": upstream_id,
                 "id_retail": existing.get("id_retail", id_retail),
                 "id_supplier": existing.get("id_supplier", id_supplier),
-                "message": existing.get("message", "Menunggu opsi distributor dari supplier…"),
-                "distributor_options": existing_opts,
-                "_raw": {**({"source": "local_stub_after_checkout"}), "upstream_resp": resp},
+                "message": existing.get("message", upstream_resp.get("message") or "Menunggu opsi distributor dari supplier…"),
+                "jumlah_item": existing.get("jumlah_item", upstream_resp.get("jumlah_item")),
+                "total_kuantitas": existing.get("total_kuantitas", upstream_resp.get("total_kuantitas")),
+                "total_order": existing.get("total_order", upstream_resp.get("total_order")),
+                "distributor_options": merged_opts,
+                "_raw": {**existing.get("_raw", {}), "upstream_resp": upstream_resp, "source": "local_stub_after_checkout"},
             }
-            print(f"[checkout] local draft merged for order #{upstream_id}")
+
+            # Kalau supplier mengembalikan resi sejak checkout (jarang), simpan juga
+            _merge_resi_into_draft(upstream_id, upstream_resp)
+
+            print(f"[checkout] local draft merged for order #{upstream_id} | opsi: {len(merged_opts)}")
     except Exception as e:
         print("[checkout] failed to create/merge local draft:", repr(e))
 
@@ -170,7 +280,7 @@ def checkout_order():
     return jsonify({
         "message": "Pesanan dikirim ke supplier",
         "id_order": int(upstream_id) if upstream_id else None,
-        "order": resp
+        "order": upstream_resp
     }), 200
 
 
@@ -189,66 +299,27 @@ def order_callback():
         return jsonify({"error": "Callback tanpa id_order"}), 400
     id_order = int(id_order)
 
-    distributor_options = []
-
-    # Plan A: bentuk lama (ada "ongkir" dict)
-    ongkir = data.get("ongkir") or {}
-    if isinstance(ongkir, dict):
-        for _, v in ongkir.items():
-            if not isinstance(v, dict):
-                continue
-            rr = v.get("raw_response") or {}
-            estimasi = (
-                v.get("estimasi")
-                or rr.get("eta_text")
-                or (f"{rr.get('eta_days')} hari" if rr.get("eta_days") is not None else None)
-                or rr.get("eta_delivery_date")
-                or "-"
-            )
-            distributor_options.append({
-                "id_distributor":  v.get("id_distributor") or rr.get("id_distributor"),
-                "nama_distributor": v.get("nama_distributor") or rr.get("nama_distributor") or rr.get("distributor_name"),
-                "harga_pengiriman": v.get("harga") or rr.get("harga_pengiriman"),
-                "estimasi": estimasi,
-                "quote_url": v.get("url"),
-                "quote_id": rr.get("quote_id"),
-            })
-
-    # Plan B: bentuk baru (langsung "distributor_options" list)
-    if not distributor_options:
-        raw_opts = data.get("distributor_options")
-        if isinstance(raw_opts, list):
-            for v in raw_opts:
-                if not isinstance(v, dict):
-                    continue
-                distributor_options.append({
-                    "id_distributor":  v.get("id_distributor"),
-                    "nama_distributor": v.get("nama_distributor"),
-                    "harga_pengiriman": v.get("harga_pengiriman") or v.get("harga") or 0,
-                    "estimasi": v.get("estimasi") or "-",
-                    "quote_url": v.get("url"),
-                    "quote_id": v.get("quote_id"),
-                })
-
     # Ambil draft lama kalau ada (supaya bisa fallback id_supplier)
     prev = ORDER_DRAFTS.get(id_order) or {}
+
+    distributor_options = _extract_distributor_options_from_payload(data)
 
     normalized = {
         "id_order": id_order,
         "id_retail": data.get("id_retail") if data.get("id_retail") is not None else prev.get("id_retail"),
         "id_supplier": data.get("id_supplier") if data.get("id_supplier") is not None else prev.get("id_supplier"),
-        "jumlah_item": data.get("jumlah_item"),
-        "total_kuantitas": data.get("total_kuantitas"),
-        "total_order": data.get("total_order"),
-        "message": data.get("message"),
-        "distributor_options": distributor_options,
+        "jumlah_item": data.get("jumlah_item") if data.get("jumlah_item") is not None else prev.get("jumlah_item"),
+        "total_kuantitas": data.get("total_kuantitas") if data.get("total_kuantitas") is not None else prev.get("total_kuantitas"),
+        "total_order": data.get("total_order") if data.get("total_order") is not None else prev.get("total_order"),
+        "message": data.get("message") or prev.get("message"),
+        "distributor_options": distributor_options if distributor_options else prev.get("distributor_options", []),
         "_raw": data,
     }
     ORDER_DRAFTS[id_order] = normalized
 
     print("\n=== CALLBACK NORMALIZED ===")
-    print(f"Order: {id_order} | opsi: {len(distributor_options)} | supplier: {normalized.get('id_supplier')}")
-    for i, o in enumerate(distributor_options, 1):
+    print(f"Order: {id_order} | opsi: {len(normalized.get('distributor_options') or [])} | supplier: {normalized.get('id_supplier')}")
+    for i, o in enumerate(normalized.get("distributor_options") or [], 1):
         print(f"  {i}. {o.get('nama_distributor')} (ID {o.get('id_distributor')}) "
               f"- Rp{o.get('harga_pengiriman')} - {o.get('estimasi')}")
     print("===========================\n")
@@ -312,7 +383,13 @@ def choose_distributor(id_order: int):
     except requests.exceptions.RequestException as e:
         return jsonify({"error": "upstream_error", "detail": str(e)}), 502
 
-    ORDER_DRAFTS.setdefault(id_order, {})["chosen_distributor"] = int(id_distributor)
+    # === simpan pilihan distributor
+    d = ORDER_DRAFTS.setdefault(id_order, {})
+    d["chosen_distributor"] = int(id_distributor)
+
+    # === BARU: jika response sudah mengandung resi/total/eta → simpan ke draft
+    _merge_resi_into_draft(id_order, data)
+
     return jsonify({"status": "success", "upstream": data}), 200
 
 
