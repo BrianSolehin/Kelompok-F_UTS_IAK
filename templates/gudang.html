@@ -78,7 +78,6 @@
             <th class="text-right p-4 font-semibold text-gray-700">Harga Jual</th>
             <th class="text-right p-4 font-semibold text-gray-700">Stok</th>
             <th class="text-left p-4 font-semibold text-gray-700">Last Restock</th>
-            <th class="text-center p-4 font-semibold text-gray-700">Aksi</th>
           </tr>
         </thead>
         <tbody id="gudangBody" class="divide-y divide-gray-100"></tbody>
@@ -128,9 +127,7 @@ async function fetchJSON(url) {
 }
 
 function showLoading(v) {
-  const el = document.getElementById('gudangLoading');
-  if (!el) return;
-  el.classList.toggle('hidden', !v);
+  document.getElementById('gudangLoading')?.classList.toggle('hidden', !v);
 }
 
 function showError(msg) {
@@ -163,28 +160,19 @@ async function loadGudang(q = '') {
 }
 
 function updateSummaryClient(items) {
-  const totalProduk = document.getElementById('totalProduk');
-  const totalStok   = document.getElementById('totalStok');
-  const stokRendah  = document.getElementById('stokRendah');
-
-  const tp = items.length;
-  const ts = items.reduce((a, x) => a + (Number(x.stok || x.quantity || 0)), 0);
-  const lr = items.filter(x => Number(x.stok || x.quantity || 0) < 10).length;
-
-  if (totalProduk) totalProduk.textContent = tp;
-  if (totalStok)   totalStok.textContent   = ts;
-  if (stokRendah)  stokRendah.textContent  = lr;
+  document.getElementById('totalProduk').textContent = items.length;
+  document.getElementById('totalStok').textContent   = items.reduce((a, x) => a + (Number(x.stok || x.quantity || 0)), 0);
+  document.getElementById('stokRendah').textContent  = items.filter(x => Number(x.stok || x.quantity || 0) < 10).length;
 }
 
 function renderTable(items) {
   const body = document.getElementById('gudangBody');
-  if (!body) return;
   body.innerHTML = '';
 
   if (!items.length) {
     body.innerHTML = `
       <tr>
-        <td class="p-8 text-center text-gray-500" colspan="7">
+        <td class="p-8 text-center text-gray-500" colspan="6">
           <div class="flex flex-col items-center gap-3">
             <span class="text-4xl">📭</span>
             <div>Data kosong atau tidak ditemukan</div>
@@ -207,63 +195,25 @@ function renderTable(items) {
     const tr = document.createElement('tr');
     tr.className = 'hover:bg-purple-50 transition-colors';
     tr.innerHTML = `
-      <td class="p-4">
-        <span class="px-3 py-1 bg-gray-100 rounded-lg font-mono text-xs">${sku}</span>
-      </td>
+      <td class="p-4"><span class="px-3 py-1 bg-gray-100 rounded-lg font-mono text-xs">${sku}</span></td>
       <td class="p-4 font-medium text-gray-800">${nama}</td>
-      <td class="p-4 text-gray-600">
-        <span class="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs">${supplier}</span>
-      </td>
+      <td class="p-4 text-gray-600"><span class="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs">${supplier}</span></td>
       <td class="p-4 text-right font-semibold text-gray-800">${rupiah(harga)}</td>
       <td class="p-4 text-right ${stokClass}">${stok}</td>
       <td class="p-4 text-gray-600 text-sm">${fmtDate(last)}</td>
-      <td class="p-4 text-center">
-        <button class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all font-medium"
-                onclick="actionRestock('${String(sku).replace(/'/g, "\\'")}')">
-          Restock
-        </button>
-      </td>
     `;
     body.appendChild(tr);
   }
 }
 
-async function actionRestock(sku) {
-  const qtyStr = prompt(`Restock berapa unit untuk SKU ${sku}?`, "10");
-  if (!qtyStr) return;
-  const qty = Number(qtyStr);
-  if (!Number.isFinite(qty) || qty <= 0) {
-    alert('Quantity harus angka lebih dari 0');
-    return;
-  }
-  try {
-    await fetch('/api/gudang/restock', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      credentials: 'include',
-      body: JSON.stringify({ sku, qty })
-    });
-    await loadGudang(document.getElementById('searchGudang')?.value || '');
-  } catch (e) {
-    alert('Gagal restock: ' + (e?.message || ''));
-  }
-}
-
 function debounce(fn, ms=300) {
   let t;
-  return (...args) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), ms);
-  };
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('btnRefreshGudang');
-  const search = document.getElementById('searchGudang');
-
-  btn?.addEventListener('click', () => loadGudang(search?.value || ''));
-  search?.addEventListener('input', debounce((e) => loadGudang(e.target.value || ''), 350));
-
+  document.getElementById('btnRefreshGudang')?.addEventListener('click', () => loadGudang(document.getElementById('searchGudang')?.value || ''));
+  document.getElementById('searchGudang')?.addEventListener('input', debounce((e) => loadGudang(e.target.value || ''), 350));
   loadGudang('');
 });
 </script>

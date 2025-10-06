@@ -1,0 +1,502 @@
+{% extends "template.html" %}
+{% block title %}History Transaksi - Retail App{% endblock %}
+{% block content %}
+<div class="min-h-screen bg-gray-50 p-6">
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold text-purple-900">History Transaksi</h1>
+      <p class="text-gray-600 mt-1">Riwayat transaksi restock dan penjualan</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div id="statsCards" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <!-- Cards will be rendered here -->
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="bg-white rounded-lg shadow-sm mb-6">
+      <div class="border-b border-gray-200">
+        <nav class="flex space-x-4 px-6">
+          <button onclick="switchTab('restock')" id="tabRestock" class="tab-button py-4 px-4 text-sm font-medium border-b-2 border-purple-600 text-purple-600">
+            Restock Supplier
+          </button>
+          <button onclick="switchTab('penjualan')" id="tabPenjualan" class="tab-button py-4 px-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+            Penjualan Customer
+          </button>
+        </nav>
+      </div>
+
+      <!-- Restock Section -->
+      <div id="sectionRestock" class="tab-content p-6">
+        <!-- Filters -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Transaksi</label>
+            <select id="filterTipeRestock" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+              <option value="">Restock Supplier</option>
+              <option value="RESTOCK">Restock</option>
+              <option value="SELESAI">Selesai</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Cari Transaksi</label>
+            <input type="text" id="searchRestock" placeholder="Cari ID, supplier, metode bayar" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Urutkan</label>
+            <select id="sortRestock" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+              <option value="terbaru">Terbaru</option>
+              <option value="terlama">Terlama</option>
+              <option value="tertinggi">Nilai Tertinggi</option>
+              <option value="terendah">Nilai Terendah</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="refreshHistory()" class="mb-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Refresh
+        </button>
+
+        <!-- Transaction Cards -->
+        <div id="restockCards" class="space-y-4">
+          <div class="text-center py-12 text-gray-500">Memuat data...</div>
+        </div>
+      </div>
+
+      <!-- Penjualan Section -->
+      <div id="sectionPenjualan" class="tab-content p-6 hidden">
+        <!-- Filters -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Transaksi</label>
+            <select id="filterTipePenjualan" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+              <option value="">Penjualan Customer</option>
+              <option value="PAID">PAID</option>
+              <option value="PENDING">PENDING</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Cari Transaksi</label>
+            <input type="text" id="searchPenjualan" placeholder="Cari ID, supplier, metode bayar" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Urutkan</label>
+            <select id="sortPenjualan" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+              <option value="terbaru">Terbaru</option>
+              <option value="terlama">Terlama</option>
+              <option value="tertinggi">Nilai Tertinggi</option>
+              <option value="terendah">Nilai Terendah</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="refreshHistory()" class="mb-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Refresh
+        </button>
+
+        <!-- Transaction Cards -->
+        <div id="penjualanCards" class="space-y-4">
+          <div class="text-center py-12 text-gray-500">Memuat data...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_extra %}
+<style>
+.tab-button {
+  transition: all 0.2s;
+}
+.tab-button.active {
+  border-color: #7c3aed;
+  color: #7c3aed;
+}
+.tab-content {
+  animation: fadeIn 0.3s ease-in;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.stat-card {
+  transition: transform 0.2s;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+</style>
+
+<script>
+// Utility functions
+function rupiah(n){ 
+  try{ 
+    return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0}).format(Number(n||0)); 
+  }catch(_){ 
+    return 'Rp '+(n||0); 
+  } 
+}
+
+function fmtDate(s){ 
+  try{ 
+    const d = new Date(s);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = d.toLocaleString('id-ID', { month: 'short' });
+    const year = d.getFullYear();
+    const time = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    return `${day} ${month} ${year}, ${time}`;
+  }catch(_){ 
+    return s||'-'; 
+  } 
+}
+
+// Global data storage
+let allResi = [];
+let allTransaksi = [];
+
+// Tab switching
+function switchTab(tab) {
+  const tabs = ['restock', 'penjualan'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+    const section = document.getElementById(`section${t.charAt(0).toUpperCase() + t.slice(1)}`);
+    
+    if(t === tab) {
+      btn.classList.add('active', 'border-purple-600', 'text-purple-600');
+      btn.classList.remove('border-transparent', 'text-gray-500');
+      section.classList.remove('hidden');
+    } else {
+      btn.classList.remove('active', 'border-purple-600', 'text-purple-600');
+      btn.classList.add('border-transparent', 'text-gray-500');
+      section.classList.add('hidden');
+    }
+  });
+}
+
+// Render Stats Cards
+function renderStatsCards() {
+  const totalRestock = allResi.length;
+  const totalPenjualan = allTransaksi.length;
+  
+  const nilaiRestock = allResi.reduce((sum, r) => {
+    // Assuming we can calculate from quantity and price if available
+    return sum;
+  }, 0);
+  
+  const nilaiPenjualan = allTransaksi.reduce((sum, t) => sum + (Number(t.total_harga) || 0), 0);
+
+  const statsHTML = `
+    <div class="stat-card bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 shadow-sm">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-blue-800">Total Restock</span>
+        <div class="w-10 h-10 bg-blue-200 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="text-2xl font-bold text-blue-900">${totalRestock}</div>
+    </div>
+
+    <div class="stat-card bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 shadow-sm">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-green-800">Total Penjualan</span>
+        <div class="w-10 h-10 bg-green-200 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="text-2xl font-bold text-green-900">${totalPenjualan}</div>
+    </div>
+
+    <div class="stat-card bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 shadow-sm">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-purple-800">Nilai Restock</span>
+        <div class="w-10 h-10 bg-purple-200 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="text-lg font-bold text-purple-900">${rupiah(nilaiRestock)}</div>
+    </div>
+
+    <div class="stat-card bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-4 shadow-sm">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-yellow-800">Nilai Penjualan</span>
+        <div class="w-10 h-10 bg-yellow-200 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="text-lg font-bold text-yellow-900">${rupiah(nilaiPenjualan)}</div>
+    </div>
+  `;
+
+  document.getElementById('statsCards').innerHTML = statsHTML;
+}
+
+// Render Restock Cards
+function renderRestockCards(items) {
+  const container = document.getElementById('restockCards');
+  
+  if(!items.length){
+    container.innerHTML = `
+      <div class="text-center py-12 text-gray-500">
+        <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+        </svg>
+        <p class="font-medium text-gray-700">Tidak ada data restock</p>
+        <p class="text-sm text-gray-500 mt-1">Data resi yang sudah delivered akan muncul di sini</p>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = items.map(it => `
+    <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+      <div class="flex items-start justify-between mb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="font-bold text-gray-900 text-lg">${it.no_resi || 'RS00014'}</div>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">📦 Restock</span>
+              <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">✓ ${it.status || 'Selesai'}</span>
+            </div>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="text-sm font-semibold text-gray-500">Total</div>
+          <div class="text-xl font-bold text-gray-900">${rupiah(0)}</div>
+        </div>
+      </div>
+      
+      <div class="text-sm text-gray-600 mb-2">
+        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+        ${fmtDate(it.tanggal)}
+      </div>
+
+      <div class="border-t border-gray-200 pt-3 mt-3">
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <div class="text-gray-500 mb-1">Supplier</div>
+            <div class="font-medium text-gray-900">${it.nama_supplier || 'CV. Setia Sayur Selalihtera'}</div>
+          </div>
+          <div>
+            <div class="text-gray-500 mb-1">No. Resi</div>
+            <div class="font-medium text-gray-900">${it.id_barang || 'RES72062'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Render Penjualan Cards
+function renderPenjualanCards(items) {
+  const container = document.getElementById('penjualanCards');
+  
+  if(!items.length){
+    container.innerHTML = `
+      <div class="text-center py-12 text-gray-500">
+        <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+        </svg>
+        <p class="font-medium text-gray-700">Tidak ada data penjualan</p>
+        <p class="text-sm text-gray-500 mt-1">Data transaksi yang sudah dibayar akan muncul di sini</p>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = items.map(t => {
+    const statusColor = t.status === 'PAID' ? 'green' : 'red';
+    const statusBg = t.status === 'PAID' ? 'bg-green-100' : 'bg-red-100';
+    const statusText = t.status === 'PAID' ? 'text-green-700' : 'text-red-700';
+    const statusIcon = t.status === 'PAID' ? '✓' : '✕';
+    
+    return `
+    <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+      <div class="flex items-start justify-between mb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="font-bold text-gray-900 text-lg">SL${String(t.id_transaksi).padStart(5, '0')}</div>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">🛒 Penjualan</span>
+              <span class="px-2 py-0.5 ${statusBg} ${statusText} text-xs font-semibold rounded">${statusIcon} ${t.status || 'Dibatalkan'}</span>
+            </div>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="text-sm font-semibold text-gray-500">Total</div>
+          <div class="text-xl font-bold text-gray-900">${rupiah(t.total_harga)}</div>
+        </div>
+      </div>
+      
+      <div class="text-sm text-gray-600 mb-2">
+        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+        ${fmtDate(t.tanggal)}
+      </div>
+
+      <div class="border-t border-gray-200 pt-3 mt-3">
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <div class="text-gray-500 mb-1">Metode Bayar</div>
+            <div class="font-medium text-gray-900">${(t.metode_bayar || 'CASH').toUpperCase()}</div>
+          </div>
+          <div>
+            <div class="text-gray-500 mb-1">No. Resi</div>
+            <div class="font-medium text-gray-900">RES${String(t.id_transaksi).padStart(5, '0')}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `}).join('');
+}
+
+// Filter and Sort Functions
+function applyFiltersRestock() {
+  let filtered = [...allResi];
+  
+  const search = document.getElementById('searchRestock').value.toLowerCase();
+  const tipe = document.getElementById('filterTipeRestock').value;
+  const sort = document.getElementById('sortRestock').value;
+  
+  // Search filter
+  if(search) {
+    filtered = filtered.filter(it => 
+      (it.no_resi || '').toLowerCase().includes(search) ||
+      (it.nama_barang || '').toLowerCase().includes(search) ||
+      (it.nama_supplier || '').toLowerCase().includes(search) ||
+      (it.id_barang || '').toLowerCase().includes(search)
+    );
+  }
+  
+  // Type filter
+  if(tipe) {
+    filtered = filtered.filter(it => it.status === tipe);
+  }
+  
+  // Sort
+  if(sort === 'terlama') {
+    filtered.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+  } else if(sort === 'terbaru') {
+    filtered.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+  }
+  
+  renderRestockCards(filtered);
+}
+
+function applyFiltersPenjualan() {
+  let filtered = [...allTransaksi];
+  
+  const search = document.getElementById('searchPenjualan').value.toLowerCase();
+  const tipe = document.getElementById('filterTipePenjualan').value;
+  const sort = document.getElementById('sortPenjualan').value;
+  
+  // Search filter
+  if(search) {
+    filtered = filtered.filter(t => 
+      String(t.id_transaksi).includes(search) ||
+      (t.customer_id || '').toLowerCase().includes(search) ||
+      (t.metode_bayar || '').toLowerCase().includes(search)
+    );
+  }
+  
+  // Type filter
+  if(tipe) {
+    filtered = filtered.filter(t => t.status === tipe);
+  }
+  
+  // Sort
+  if(sort === 'terlama') {
+    filtered.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+  } else if(sort === 'terbaru') {
+    filtered.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+  } else if(sort === 'tertinggi') {
+    filtered.sort((a, b) => (b.total_harga || 0) - (a.total_harga || 0));
+  } else if(sort === 'terendah') {
+    filtered.sort((a, b) => (a.total_harga || 0) - (b.total_harga || 0));
+  }
+  
+  renderPenjualanCards(filtered);
+}
+
+// Load History Data
+async function loadHistory() {
+  // Load Resi
+  try {
+    const r = await fetch('/api/history/resi');
+    const j = await r.json();
+    allResi = j.items || [];
+    renderRestockCards(allResi);
+  } catch(e){
+    document.getElementById('restockCards').innerHTML = `
+      <div class="text-center py-12 text-red-600">
+        <p>Gagal memuat data resi: ${e.message}</p>
+      </div>
+    `;
+  }
+  
+  // Load Transaksi
+  try {
+    const r = await fetch('/api/history/transaksi');
+    const j = await r.json();
+    allTransaksi = j.items || [];
+    renderPenjualanCards(allTransaksi);
+  } catch(e){
+    document.getElementById('penjualanCards').innerHTML = `
+      <div class="text-center py-12 text-red-600">
+        <p>Gagal memuat data transaksi: ${e.message}</p>
+      </div>
+    `;
+  }
+  
+  // Render stats
+  renderStatsCards();
+}
+
+function refreshHistory() {
+  loadHistory();
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', () => {
+  loadHistory();
+  
+  // Restock filters
+  document.getElementById('searchRestock').addEventListener('input', applyFiltersRestock);
+  document.getElementById('filterTipeRestock').addEventListener('change', applyFiltersRestock);
+  document.getElementById('sortRestock').addEventListener('change', applyFiltersRestock);
+  
+  // Penjualan filters
+  document.getElementById('searchPenjualan').addEventListener('input', applyFiltersPenjualan);
+  document.getElementById('filterTipePenjualan').addEventListener('change', applyFiltersPenjualan);
+  document.getElementById('sortPenjualan').addEventListener('change', applyFiltersPenjualan);
+});
+</script>
+{% endblock %}  

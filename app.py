@@ -2,19 +2,26 @@
 import os
 import re
 from decimal import Decimal
+from functools import wraps
 
-from flask import Flask, render_template, jsonify, request
+from flask import (
+    Flask, render_template, jsonify, request,
+    redirect, url_for, session
+)
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # --- satu-satunya instance SQLAlchemy ---
 db = SQLAlchemy()
 
+USER_TABLE = "`user`"  # pakai backtick karena nama tabel 'user' bisa reserved
+
 
 def create_app():
     app = Flask(__name__, template_folder="templates", static_folder="static")
-    app.secret_key = "retail-secret-key"
+    app.secret_key = os.getenv("FLASK_SECRET_KEY", "retail-secret-key")
 
     # CORS
     CORS(app, supports_credentials=True)
@@ -29,7 +36,127 @@ def create_app():
     # Init DB
     db.init_app(app)
 
-    # ------------------ REGISTER BLUEPRINTS ------------------
+    # ================== UTIL DB: USER ==================
+    def _row_to_dict(row) -> dict:
+        d = dict(row)
+        for k, v in list(d.items()):
+            if isinstance(v, Decimal):
+                d[k] = float(v)
+        return d
+
+    def get_user_by_username(username: str):
+        sql = text(
+            f"SELECT id_user, username, password, role, created_at FROM {USER_TABLE} WHERE username = :u"
+        )
+        return db.session.execute(sql, {"u": username}).mappings().first()
+
+    def count_users() -> int:
+        return int(db.session.execute(text(f"SELECT COUNT(*) FROM {USER_TABLE}")).scalar() or 0)
+
+    def create_user(username: str, password_plain: str, role: str = "admin"):
+        if not username or not password_plain:
+            raise ValueError("username/password wajib")
+        if role not in ("admin",):  # enum kamu hanya 'admin'
+            role = "admin"
+        if get_user_by_username(username):
+            raise ValueError("username sudah terpakai")
+
+        pwd_hash = generate_password_hash(password_plain)
+        sql = text(f"""
+            INSERT INTO {USER_TABLE} (username, password, role)
+            VALUES (:u, :p, :r)
+        """)
+        db.session.execute(sql, {"u": username, "p": pwd_hash, "r": role})
+        db.session.commit()
+
+    # ================== SEED ADMIN OPSIONAL ==================
+    with app.app_context():
+        try:
+            if count_users() == 0:
+                seed_user = os.getenv("ADMIN_USER", "admin")
+                seed_pass = os.getenv("ADMIN_PASS", "admin123")
+                create_user(seed_user, seed_pass, "admin")
+                print(f"[SEED] admin default dibuat: {seed_user} / (hidden)")
+        except Exception as e:
+            print("[SEED] dilewati:", e)
+
+    # ================== AUTH GUARD ==================
+    def login_required(view_func):
+        @wraps(view_func)
+        def wrapped(*args, **kwargs):
+            if not session.get("user"):
+                return redirect(url_for("login_page"))
+            return view_func(*args, **kwargs)
+        return wrapped
+
+    # ================== LOGIN (SERVER-RENDER) ==================
+    @app.get("/login")
+    def login_page():
+        if session.get("user"):
+            return redirect(url_for("ui_home"))
+        # bisa terima error via query ?error=...
+        error = request.args.get("error")
+        return render_template("login.html", error=error)
+
+    @app.post("/login")
+    def login_submit():
+        """Menerima form POST seperti di HTML kamu: action='/login'."""
+        username = (request.form.get("username") or "").strip()
+        password = (request.form.get("password") or "").strip()
+
+        try:
+            row = get_user_by_username(username)
+            if not row:
+                # render kembali dengan error
+                return render_template("login.html", error="User tidak ditemukan"), 401
+
+            if not check_password_hash(row["password"], password):
+                return render_template("login.html", error="Password salah"), 401
+
+            session["user"] = {
+                "id_user": row["id_user"],
+                "username": row["username"],
+                "role": row["role"],
+            }
+            return redirect(url_for("ui_home"))
+        except Exception as e:
+            return render_template("login.html", error=f"Gagal login: {e}"), 500
+
+    @app.post("/logout")
+    def logout_submit():
+        session.clear()
+        return redirect(url_for("login_page"))
+
+    # ================== REGISTER (SERVER-RENDER) ==================
+    @app.get("/register")
+    def register_page():
+        if session.get("user"):
+            return redirect(url_for("ui_home"))
+        error = request.args.get("error")
+        return render_template("register.html", error=error)
+
+    @app.post("/register")
+    def register_submit():
+        username = (request.form.get("username") or "").strip()
+        password = (request.form.get("password") or "").strip()
+        confirm  = (request.form.get("confirm")  or "").strip()
+
+        if not username or not password:
+            return render_template("register.html", error="Username & password wajib"), 400
+        if password != confirm:
+            return render_template("register.html", error="Konfirmasi password tidak cocok"), 400
+
+        try:
+            create_user(username, password, "admin")
+            # setelah sukses, arahkan ke login
+            return redirect(url_for("login_page"))
+        except ValueError as ve:
+            return render_template("register.html", error=str(ve)), 400
+        except Exception as e:
+            db.session.rollback()
+            return render_template("register.html", error=f"Gagal register: {e}"), 500
+
+    # ================= REGISTER BLUEPRINTS =================
     try:
         from orders import orders_bp
         app.register_blueprint(orders_bp, url_prefix="/api/orders")
@@ -54,54 +181,64 @@ def create_app():
     except Exception as e:
         print("WARN: gagal load supplier2_bp:", e)
 
-    # === POS / TRANSAKSI API ===
     try:
         from transaksi import pos_bp
-        app.register_blueprint(pos_bp)  # rute API lengkap di transaksi.py
+        app.register_blueprint(pos_bp)
     except Exception as e:
         print("WARN: gagal load pos_bp:", e)
 
-    # (opsional) receiver untuk event distributor
     try:
         from get_product import receiver_bp
-        app.register_blueprint(receiver_bp)   # /api/distributor-events
+        app.register_blueprint(receiver_bp)
     except Exception as e:
         print("WARN: gagal load receiver_bp:", e)
 
-    # ========================= UI ROUTES =========================
+    # ========================= ROOT / =========================
     @app.get("/")
-    def index():
-        return {"service": "retail", "status": "ok"}
+    def root():
+        # belum login -> ke /login, sudah -> /ui
+        if not session.get("user"):
+            return redirect(url_for("login_page"))
+        return redirect(url_for("ui_home"))
 
+    # ========================= UI ROUTES =========================
     @app.get("/ui")
+    @login_required
     def ui_home():
         return render_template("supplier_ui.html")
 
     @app.get("/ui/supplier")
+    @login_required
     def ui_supplier_alias():
         return render_template("supplier_ui.html")
 
     @app.get("/ui/gudang")
+    @login_required
     def ui_gudang():
         return render_template("gudang.html")
 
-    # Satu-satunya endpoint UI POS
     @app.get("/ui/transaksi")
+    @login_required
     def ui_transaksi():
         return render_template("transaksi.html")
 
-    # ========== (BARU) UI: DAFTAR TRANSAKSI ==========
     @app.get("/ui/semua-transaksi")
+    @login_required
     def ui_semua_transaksi():
         return render_template("pesanan.html")
 
-    # Alias opsional
     @app.get("/ui/pesanan")
+    @login_required
     def ui_pesanan_alias():
         return render_template("pesanan.html")
 
-    # Catch-all untuk template lain
+    @app.get("/ui/history")
+    @login_required
+    def ui_history():
+        return render_template("history.html")
+
     @app.get("/ui/<path:name>")
+    @login_required
     def ui_by_name(name: str):
         if not re.fullmatch(r"[a-zA-Z0-9_\-\/]+", name or ""):
             return jsonify({"error": "invalid template name"}), 400
@@ -123,18 +260,11 @@ def create_app():
 
         return render_template(tpl_name)
 
-    # ===================== API GUDANG (pakai tabel: barang) =====================
+    # ===================== API GUDANG =====================
     TABLE = "barang"
 
     def _like(q: str) -> str:
         return f"%{q.strip()}%" if q else "%"
-
-    def _row_to_dict(row) -> dict:
-        d = dict(row)
-        for k, v in list(d.items()):
-            if isinstance(v, Decimal):
-                d[k] = float(v)
-        return d
 
     @app.get("/api/gudang")
     def api_gudang_list():
@@ -285,7 +415,30 @@ def create_app():
             db.session.rollback()
             return jsonify({"error": "gagal update", "detail": str(e)}), 500
 
-    # ===================== DEBUG / HEALTH =====================
+    # ===================== HISTORY =====================
+    @app.get("/api/history/resi")
+    def api_history_resi():
+        rows = db.session.execute(text("""
+            SELECT no_resi, id_barang, nama_barang, quantity, nama_supplier, nama_distributor, status, tanggal
+            FROM resi
+            WHERE status = 'DELIVERED'
+            ORDER BY tanggal DESC
+            LIMIT 100
+        """)).mappings().all()
+        return jsonify({"items": [dict(r) for r in rows]})
+
+    @app.get("/api/history/transaksi")
+    def api_history_transaksi():
+        rows = db.session.execute(text("""
+            SELECT id_transaksi, tanggal, customer_id, total_harga, metode_bayar, status, bayar, kembali
+            FROM transaksi
+            WHERE status = 'PAID'
+            ORDER BY tanggal DESC
+            LIMIT 100
+        """)).mappings().all()
+        return jsonify({"items": [dict(r) for r in rows]})
+
+    # ===================== DEBUG =====================
     @app.get("/__routes__")
     def routes():
         return {"routes": sorted([str(r) for r in app.url_map.iter_rules()])}
