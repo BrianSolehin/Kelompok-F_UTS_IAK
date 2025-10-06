@@ -8,29 +8,17 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 
-# --- Satu-satunya instance SQLAlchemy ---
+# --- satu-satunya instance SQLAlchemy ---
 db = SQLAlchemy()
 
-
 def create_app():
-    """
-    Struktur direktori:
-    iak/uts_asli/
-    ├─ app.py
-    ├─ templates/
-    │  ├─ template.html        (disarankan punya {% block body_extra %}{% endblock %})
-    │  ├─ supplier_ui.html
-    │  └─ gudang.html
-    └─ static/
-    """
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.secret_key = "retail-secret-key"
 
     # CORS
     CORS(app, supports_credentials=True)
 
-    # === Database URI (MySQL/MariaDB) ===
-    # Set ENV FLASK_DB_URI kalau perlu override.
+    # DB URI
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
         "FLASK_DB_URI",
         "mysql+pymysql://root:@127.0.0.1:3306/retail_db"
@@ -40,7 +28,7 @@ def create_app():
     # Init DB
     db.init_app(app)
 
-    # ------------------ BLUEPRINT LAIN (opsional) ------------------
+    # ------------------ REGISTER BLUEPRINTS ------------------
     try:
         from orders import orders_bp
         app.register_blueprint(orders_bp, url_prefix="/api/orders")
@@ -65,27 +53,37 @@ def create_app():
     except Exception:
         pass
 
+    # === POS / TRANSAKSI (penting!) ===
+    try:
+        from transaksi import pos_bp          # <-- ini penting
+        app.register_blueprint(pos_bp)        # tanpa prefix: rute sudah lengkap di file transaksi.py
+    except Exception as e:
+        print("WARN: gagal load pos_bp:", e)
+
+    # === get_product receiver (opsional) ===
+    try:
+        from get_product import receiver_bp
+        app.register_blueprint(receiver_bp)   # /api/distributor-events
+    except Exception as e:
+        print("WARN: gagal load receiver_bp:", e)
+
     # ========================= UI ROUTES =========================
     @app.get("/")
     def index():
         return {"service": "retail", "status": "ok"}
 
-    # Halaman supplier utama
     @app.get("/ui")
     def ui_home():
         return render_template("supplier_ui.html")
 
-    # ALIAS supaya /ui/supplier tidak error "template not found"
     @app.get("/ui/supplier")
     def ui_supplier_alias():
         return render_template("supplier_ui.html")
 
-    # Halaman gudang
     @app.get("/ui/gudang")
     def ui_gudang():
         return render_template("gudang.html")
 
-    # Render template dinamis aman (mis. /ui/nama_lain -> templates/nama_lain.html)
     @app.get("/ui/<path:name>")
     def ui_by_name(name: str):
         if not re.fullmatch(r"[a-zA-Z0-9_\-\/]+", name or ""):
@@ -108,22 +106,19 @@ def create_app():
 
         return render_template(tpl_name)
 
-    # ===================== HELPER & KONFIG GUDANG =====================
-    TABLE = "barang"  # tabel sesuai skema MariaDB kamu
+    # ===================== API GUDANG =====================
+    TABLE = "barang"
 
     def _like(q: str) -> str:
         return f"%{q.strip()}%" if q else "%"
 
     def _row_to_dict(row) -> dict:
-        """Konversi RowMapping -> dict + Decimal -> float untuk jsonify."""
         d = dict(row)
         for k, v in list(d.items()):
             if isinstance(v, Decimal):
                 d[k] = float(v)
         return d
 
-    # ========================== API GUDANG ==========================
-    # GET /api/gudang?q=ikan
     @app.get("/api/gudang")
     def api_gudang_list():
         q = (request.args.get("q") or "").strip()
@@ -147,7 +142,6 @@ def create_app():
         items = [_row_to_dict(r) for r in rows]
         return jsonify({"items": items})
 
-    # GET /api/gudang/stats
     @app.get("/api/gudang/stats")
     def api_gudang_stats():
         def scalar(sql, params=None):
@@ -165,7 +159,6 @@ def create_app():
             "low_stok": low_stok,
         })
 
-    # POST /api/gudang/restock  -> {"sku":"BRG001","qty":10,"harga_jual":26500?}
     @app.post("/api/gudang/restock")
     def api_gudang_restock():
         data = request.get_json(silent=True) or {}
@@ -217,7 +210,6 @@ def create_app():
             db.session.rollback()
             return jsonify({"error": "gagal restock", "detail": str(e)}), 500
 
-    # PATCH /api/gudang/<sku>  (update sebagian kolom)
     @app.patch("/api/gudang/<string:sku>")
     def api_gudang_patch(sku: str):
         data = request.get_json(silent=True) or {}
@@ -294,7 +286,6 @@ def create_app():
         except Exception as e:
             return jsonify({"db": "error", "detail": str(e)}), 500
 
-    # ===================== ERROR HANDLERS =====================
     @app.errorhandler(404)
     def not_found(err):
         return jsonify({"error": "not found", "detail": str(err)}), 404
@@ -305,8 +296,6 @@ def create_app():
 
     return app
 
-
 if __name__ == "__main__":
     app = create_app()
-    # Jalankan dari folder proyek (agar templates/ & static/ terbaca)
     app.run(host="0.0.0.0", port=5000, debug=True)

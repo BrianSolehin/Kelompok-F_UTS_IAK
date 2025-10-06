@@ -6,11 +6,23 @@
   <title>Katalog Produk</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    * { font-family: 'Inter', sans-serif; }
+
     @media (min-width: 1024px) {
-      .layout { display: grid; grid-template-columns: 260px 1fr; gap: 0; }
+      .layout { display: grid; grid-template-columns: 280px 1fr; gap: 0; }
       .sidebar { height: 100vh; position: sticky; top: 0; align-self: start; }
     }
-    .nav-link.active { background: rgb(243 244 246); font-weight: 600; }
+
+    .nav-link { transition: all 0.2s ease; }
+    .nav-link:hover { transform: translateX(4px); }
+    .nav-link.active { 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
     .skeleton { position: relative; overflow: hidden; background: #f3f4f6; }
     .skeleton::after {
       content: ""; position: absolute; inset: 0; transform: translateX(-100%);
@@ -18,71 +30,104 @@
       animation: shimmer 1.2s infinite;
     }
     @keyframes shimmer { 100% { transform: translateX(100%); } }
+
+    .card-modern {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .sidebar-gradient { background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%); }
+    .drawer-overlay { backdrop-filter: blur(4px); background: rgba(0, 0, 0, 0.3); }
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
   <div class="layout">
     <!-- ===== Sidebar ===== -->
-    <aside class="sidebar bg-white border-r">
-      <div class="p-4 border-b">
-        <div class="text-lg font-bold">Retail Dashboard</div>
-        <div class="text-xs text-gray-500">Supplier • POS • Tracking</div>
+    <aside class="sidebar sidebar-gradient border-r border-gray-200">
+      <div class="p-6 border-b border-gray-200">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg">R</div>
+          <div>
+            <div class="text-lg font-bold text-gray-800">Retail Dashboard</div>
+            <div class="text-xs text-gray-500">Management System</div>
+          </div>
+        </div>
       </div>
 
-      <nav class="p-2 space-y-1">
-        <a href="/ui" class="nav-link flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-50">
-          <span>📦</span> <span>Supplier</span>
+      <nav class="p-3 space-y-2">
+        <a href="/ui" class="nav-link flex items-center gap-3 rounded-xl px-4 py-3 text-gray-700 hover:bg-gray-100">
+          <span class="text-xl">📦</span> <span class="font-medium">Supplier</span>
         </a>
-        <a href="/ui/tracking" class="nav-link flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-50">
-          <span>🚚</span> <span>Tracking</span>
+        <a href="/ui/tracking" class="nav-link flex items-center gap-3 rounded-xl px-4 py-3 text-gray-700 hover:bg-gray-100">
+          <span class="text-xl">🚚</span> <span class="font-medium">Tracking</span>
         </a>
-        <a href="/ui/pos" class="nav-link flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-50">
-          <span>🧾</span> <span>POS</span>
+        <a href="/ui/pos" class="nav-link flex items-center gap-3 rounded-xl px-4 py-3 text-gray-700 hover:bg-gray-100">
+          <span class="text-xl">🧾</span> <span class="font-medium">Transaksi (POS)</span>
         </a>
-        <a href="/ui/gudang" class="nav-link flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-50">
-          <span>🏬</span> <span>Gudang</span>
+        <a href="/ui/gudang" class="nav-link flex items-center gap-3 rounded-xl px-4 py-3 text-gray-700 hover:bg-gray-100">
+          <span class="text-xl">🏬</span> <span class="font-medium">Gudang</span>
         </a>
-        <a href="/ui/history" class="nav-link flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-50">
-          <span>📜</span> <span>History</span>
+        <a href="/ui/history" class="nav-link flex items-center gap-3 rounded-xl px-4 py-3 text-gray-700 hover:bg-gray-100">
+          <span class="text-xl">📜</span> <span class="font-medium">History</span>
         </a>
       </nav>
 
-      <div class="mt-auto p-4 text-xs text-gray-400">
-        © 2025 Retail App
+      <div class="mt-auto p-4 border-t border-gray-200">
+        <div class="text-xs text-gray-400 text-center">© 2025 Retail App</div>
       </div>
     </aside>
 
-    <!-- ===== Main Content (Katalog Supplier) ===== -->
+    <!-- ===== Main Content ===== -->
     <main class="min-h-screen">
-      <div class="max-w-6xl mx-auto p-6 space-y-4">
-        <h1 class="text-2xl font-bold">Katalog Produk</h1>
+      <div class="max-w-7xl mx-auto p-8 space-y-6">
+        <div>
+          <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent mb-2">Katalog Produk</h1>
+          <p class="text-gray-500">Kelola dan pesan produk dari supplier</p>
+        </div>
 
-        <!-- Bar atas -->
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 items-center">
-          <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-700">Sumber:</label>
-            <select id="sourceSel" class="px-3 py-2 rounded-lg border border-gray-300 w-full">
-              <option value="supplier">Supplier</option>
-              <option value="supplier2">Supplier2</option>
-            </select>
+        <!-- Control Bar -->
+        <div class="card-modern p-6">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+            <div class="lg:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Sumber Data</label>
+              <select id="sourceSel" class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                <option value="supplier">Supplier</option>
+                <option value="supplier2">Supplier2</option>
+              </select>
+            </div>
+
+            <div class="lg:col-span-3">
+              <label for="supplierIdInput" class="block text-sm font-medium text-gray-700 mb-2">ID Supplier</label>
+              <input id="supplierIdInput" type="text" placeholder="contoh: 2"
+                     class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all" />
+            </div>
+
+            <div class="lg:col-span-5">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Cari Produk</label>
+              <input id="searchInput" type="search" placeholder="🔍 Cari nama / ID / kategori / deskripsi…"
+                     class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all" />
+            </div>
+
+            <div class="lg:col-span-2">
+              <button id="refreshBtn" class="btn-primary w-full px-4 py-2.5 rounded-xl text-white font-medium shadow-lg">🔄 Refresh</button>
+            </div>
           </div>
 
-          <div class="flex items-center gap-2 lg:col-span-2">
-            <label for="supplierIdInput" class="text-sm text-gray-700 whitespace-nowrap">ID Supplier:</label>
-            <input id="supplierIdInput" type="text" placeholder="contoh: 2"
-                   class="px-3 py-2 rounded-lg border border-gray-300 w-full" />
-          </div>
-
-          <div class="flex items-center gap-2">
-            <button id="refreshBtn" class="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 w-full">
-              Refresh
-            </button>
-          </div>
-
-          <div class="lg:col-span-3 flex flex-col sm:flex-row gap-3 mt-2">
-            <input id="searchInput" type="search" placeholder="Cari nama / ID / kategori / deskripsi…"
-                   class="w-full sm:w-96 px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring" />
-            <select id="sortSel" class="px-3 py-2 rounded-lg border border-gray-300 w-full sm:w-auto">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <select id="sortSel" class="px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
               <option value="nama_product">Sort: Nama</option>
               <option value="harga">Sort: Harga</option>
               <option value="stok">Sort: Stok</option>
@@ -90,104 +135,100 @@
               <option value="kategori">Sort: Kategori</option>
             </select>
 
-            <button id="bulkAddBtn" class="px-3 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700">
-              Tambah Terpilih
-            </button>
-          </div>
+            <button id="bulkAddBtn" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-medium hover:shadow-lg transition-all">➕ Tambah Terpilih</button>
 
-          <div class="flex items-center gap-2">
-            <button id="openCartBtn" class="px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 w-full">
-              Keranjang (<span id="cartCount">0</span>)
-            </button>
+            <button id="openCartBtn" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-medium hover:shadow-lg transition-all">🛒 Keranjang (<span id="cartCount">0</span>)</button>
           </div>
         </div>
 
-        <!-- Tabel -->
-        <div class="overflow-x-auto bg-white rounded-xl shadow">
-          <table class="min-w-full text-sm">
-            <thead class="bg-gray-100 text-gray-700" id="thead"></thead>
-            <tbody id="tbody" class="divide-y"></tbody>
-          </table>
-          <div id="tableSkeleton" class="hidden p-4">
-            <div class="h-6 w-40 mb-3 skeleton rounded"></div>
-            <div class="space-y-2">
-              <div class="h-10 skeleton rounded"></div>
-              <div class="h-10 skeleton rounded"></div>
-              <div class="h-10 skeleton rounded"></div>
+        <!-- Table -->
+        <div class="card-modern overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gradient-to-r from-gray-50 to-gray-100" id="thead"></thead>
+              <tbody id="tbody" class="divide-y divide-gray-100"></tbody>
+            </table>
+            <div id="tableSkeleton" class="hidden p-6">
+              <div class="h-6 w-40 mb-3 skeleton rounded"></div>
+              <div class="space-y-2">
+                <div class="h-10 skeleton rounded"></div>
+                <div class="h-10 skeleton rounded"></div>
+                <div class="h-10 skeleton rounded"></div>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Status -->
-        <p id="status" class="text-sm text-gray-600"></p>
+        <p id="status" class="text-sm text-gray-600 px-4 py-3 bg-white rounded-xl border border-gray-200"></p>
       </div>
     </main>
   </div>
 
   <!-- Drawer Keranjang -->
-  <aside id="cartDrawer" class="fixed right-0 top-0 h-screen w-full sm:w-[440px] bg-white shadow-2xl translate-x-full transition-transform">
-    <div class="sticky top-0 z-10 bg-white p-4 border-b flex items-center justify-between">
-      <h2 class="text-lg font-semibold">Keranjang</h2>
-      <button id="closeCartBtn" class="text-gray-600 hover:text-black">✕</button>
+  <div id="cartOverlay" class="fixed inset-0 drawer-overlay hidden z-40" onclick="closeCart()"></div>
+  <aside id="cartDrawer" class="fixed right-0 top-0 h-screen w-full sm:w-[480px] bg-white shadow-2xl translate-x-full transition-transform z-50">
+    <div class="sticky top-0 z-10 bg-gradient-to-r from-purple-600 to-indigo-600 p-6 flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-bold text-white">Keranjang Belanja</h2>
+        <p class="text-purple-100 text-sm">Review pesanan Anda</p>
+      </div>
+      <button id="closeCartBtn" class="text-white hover:bg-white/20 rounded-lg p-2 transition-all">✕</button>
     </div>
 
-    <div class="px-4 pb-44 overflow-y-auto h-[calc(100vh-56px)]" id="cartScroll">
-      <div class="space-y-2 pt-2" id="cartItems"></div>
+    <div class="px-6 pb-44 overflow-y-auto h-[calc(100vh-120px)]" id="cartScroll">
+      <div class="space-y-3 pt-4" id="cartItems"></div>
 
       <!-- ===== Pilih Distributor ===== -->
-      <section id="cartDist" class="mt-6 hidden">
-        <header class="flex items-center justify-between">
+      <section id="cartDist" class="mt-8 hidden">
+        <header class="flex items-center justify-between mb-4">
           <div>
-            <h3 class="text-base font-semibold">Pilih Distributor</h3>
-            <p id="cartDistInfo" class="text-xs text-gray-500">Muncul setelah checkout berhasil.</p>
+            <h3 class="text-lg font-semibold text-gray-800">Pilih Distributor</h3>
+            <p id="cartDistInfo" class="text-sm text-gray-500">Pilih opsi pengiriman</p>
           </div>
-          <span id="cartDistOrder" class="text-xs text-gray-500"></span>
+          <span id="cartDistOrder" class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-lg"></span>
         </header>
 
-        <div id="cartDistLoading" class="hidden mt-3 rounded-lg border border-dashed p-4 text-sm text-gray-600">
+        <div id="cartDistLoading" class="hidden mt-3 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center text-gray-600">
+          <div class="w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
           Memuat opsi distributor…
         </div>
 
-        <div id="cartDistEmpty" class="hidden mt-3 rounded-lg border border-dashed p-4 text-sm text-gray-600">
+        <div id="cartDistEmpty" class="hidden mt-3 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center text-gray-600">
           Belum ada opsi distributor untuk order ini.
-          <button id="reloadDistBtnEmpty" class="ml-2 underline">Muat ulang</button>
+          <button id="reloadDistBtnEmpty" class="ml-2 text-purple-600 underline font-medium">Muat ulang</button>
         </div>
 
-        <div id="cartDistOptions" class="mt-3 grid gap-2"></div>
+        <div id="cartDistOptions" class="mt-3 space-y-3"></div>
 
-        <div class="mt-3 flex items-center gap-2">
-          <button id="reloadDistBtn" class="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50">
-            Muat ulang
-          </button>
-          <button id="confirmDistBtn" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl disabled:opacity-50" disabled>
-            Konfirmasi Distributor
-          </button>
+        <div class="mt-4 flex items-center gap-3">
+          <button id="reloadDistBtn" class="px-4 py-2.5 rounded-xl border-2 border-gray-200 hover:bg-gray-50 transition-all font-medium">🔄 Muat ulang</button>
+          <button id="confirmDistBtn" class="flex-1 px-4 py-2.5 btn-primary text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg" disabled>✓ Konfirmasi Distributor</button>
         </div>
       </section>
 
       <!-- ===== Info Resi ===== -->
-      <section id="cartResi" class="hidden mt-6 border rounded-lg p-3 bg-white">
-        <h3 class="font-semibold mb-1">Informasi Pengiriman</h3>
-        <div id="cartResiInfo" class="text-sm"></div>
+      <section id="cartResi" class="hidden mt-8 border-2 border-green-200 rounded-xl p-4 bg-green-50">
+        <h3 class="font-semibold text-green-800 mb-2">✓ Informasi Pengiriman</h3>
+        <div id="cartResiInfo" class="text-sm text-green-700"></div>
       </section>
     </div>
 
-    <div class="fixed right-0 bottom-0 w-full sm:w-[440px] bg-white border-t p-4 space-y-3">
+    <div class="fixed right-0 bottom-0 w-full sm:w-[480px] bg-white border-t-2 border-gray-200 p-6 space-y-4 shadow-lg">
       <div class="flex items-center justify-between">
-        <span class="font-medium">Total</span>
-        <span id="cartTotal" class="font-semibold">Rp 0</span>
+        <span class="font-semibold text-gray-700">Total Pembayaran</span>
+        <span id="cartTotal" class="font-bold text-2xl text-purple-600">Rp 0</span>
       </div>
-      <div class="flex gap-2">
-        <button id="clearCartBtn" class="px-3 py-2 rounded-lg border w-1/3">Clear</button>
-        <button id="checkoutBtn" class="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 w-2/3">Checkout</button>
+      <div class="flex gap-3">
+        <button id="clearCartBtn" class="px-4 py-3 rounded-xl border-2 border-gray-200 hover:bg-gray-50 font-medium transition-all w-1/3">🗑️ Clear</button>
+        <button id="checkoutBtn" class="px-4 py-3 rounded-xl btn-primary text-white font-medium shadow-lg w-2/3">💳 Checkout</button>
       </div>
-      <small class="text-gray-500 block">Checkout membutuhkan ID Supplier terisi.</small>
+      <small class="text-gray-500 block text-center">Pastikan ID Supplier sudah terisi</small>
     </div>
   </aside>
 
-  <!-- ======= SCRIPT: LOGIC GABUNG ======= -->
+  <!-- ======= SCRIPT ======= -->
   <script>
-    // Tandai menu aktif (support /ui dan /ui/supplier)
     (function markActive(){
       const path = window.location.pathname;
       document.querySelectorAll('.nav-link').forEach(a => {
@@ -197,7 +238,6 @@
       });
     })();
 
-    // ===== CONFIG =====
     const ENDPOINTS = {
       supplier:  "/api/supplier/products",
       supplier2: "/api/supplier2/products",
@@ -207,7 +247,6 @@
     const BACKEND_DRAFT_BY_ID   = (id) => `/api/orders/drafts/${id}`;
     const BACKEND_CHOOSE        = (id) => `/api/orders/drafts/${id}/choose`;
 
-    // ===== DOM =====
     const tbody = document.getElementById("tbody");
     const thead = document.getElementById("thead");
     const tableSkeleton = document.getElementById("tableSkeleton");
@@ -219,6 +258,7 @@
     const supplierIdInput = document.getElementById("supplierIdInput");
 
     const cartDrawer = document.getElementById("cartDrawer");
+    const cartOverlay = document.getElementById("cartOverlay");
     const openCartBtn = document.getElementById("openCartBtn");
     const closeCartBtn = document.getElementById("closeCartBtn");
     const cartItemsEl = document.getElementById("cartItems");
@@ -241,34 +281,29 @@
     const cartResi = document.getElementById("cartResi");
     const cartResiInfo = document.getElementById("cartResiInfo");
 
-    // ===== STATE =====
     let DATA = [];
     let CACHE_LAST_GOOD = [];
     let CURRENT_SOURCE = sourceSel.value;
     window.currentOrderId = null;
 
-    // --- Race control untuk load() ---
     let lastLoadId = 0;
     let currentAbort = null;
 
-    const rupiah = n =>
-      new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 })
-        .format(n ?? 0);
+    const rupiah = n => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n ?? 0);
 
-    // ---------- Catalog ----------
     function renderHeader() {
       const isSupplier2 = CURRENT_SOURCE === "supplier2";
       thead.innerHTML = `
         <tr>
-          <th class="p-3 text-center"><input id="chkAll" type="checkbox" /></th>
-          <th class="text-left p-3">ID</th>
-          <th class="text-left p-3">Nama</th>
-          ${isSupplier2 ? '<th class="text-left p-3">Kategori</th>' : ''}
-          <th class="text-right p-3">Harga</th>
-          <th class="text-right p-3">Stok</th>
-          ${isSupplier2 ? '<th class="text-left p-3">Deskripsi</th>' : '<th class="text-left p-3">Expired</th>'}
-          <th class="text-center p-3 w-28">Qty</th>
-          <th class="text-center p-3">Aksi</th>
+          <th class="p-4 text-center"><input id="chkAll" type="checkbox" class="w-4 h-4 rounded" /></th>
+          <th class="text-left p-4 font-semibold text-gray-700">ID</th>
+          <th class="text-left p-4 font-semibold text-gray-700">Nama</th>
+          ${isSupplier2 ? '<th class="text-left p-4 font-semibold text-gray-700">Kategori</th>' : ''}
+          <th class="text-right p-4 font-semibold text-gray-700">Harga</th>
+          <th class="text-right p-4 font-semibold text-gray-700">Stok</th>
+          ${isSupplier2 ? '<th class="text-left p-4 font-semibold text-gray-700">Deskripsi</th>' : '<th class="text-left p-4 font-semibold text-gray-700">Expired</th>'}
+          <th class="text-center p-4 font-semibold text-gray-700 w-28">Qty</th>
+          <th class="text-center p-4 font-semibold text-gray-700">Aksi</th>
         </tr>
       `;
       setTimeout(() => {
@@ -297,33 +332,35 @@
 
       const isSupplier2 = CURRENT_SOURCE === "supplier2";
       tbody.innerHTML = rows.map(item => `
-        <tr class="hover:bg-gray-50">
-          <td class="p-3 text-center">
-            <input class="rowChk" type="checkbox" data-id="${item.id_product}">
+        <tr class="hover:bg-purple-50 transition-colors">
+          <td class="p-4 text-center">
+            <input class="rowChk w-4 h-4 rounded" type="checkbox" data-id="${item.id_product}">
           </td>
-          <td class="p-3 font-mono">${item.id_product ?? ""}</td>
-          <td class="p-3">${item.nama_product ?? ""}</td>
-          ${isSupplier2 ? `<td class="p-3">${item.kategori ?? "-"}</td>` : ""}
-          <td class="p-3 text-right">${rupiah(item.harga)}</td>
-          <td class="p-3 text-right">${item.stok ?? 0}</td>
+          <td class="p-4">
+            <span class="px-3 py-1 bg-gray-100 rounded-lg font-mono text-xs">${item.id_product ?? ""}</span>
+          </td>
+          <td class="p-4 font-medium text-gray-800">${item.nama_product ?? ""}</td>
+          ${isSupplier2 ? `<td class="p-4 text-gray-600">${item.kategori ?? "-"}</td>` : ""}
+          <td class="p-4 text-right font-semibold text-gray-800">${rupiah(item.harga)}</td>
+          <td class="p-4 text-right font-semibold ${item.stok < 10 ? 'text-red-600' : 'text-green-600'}">${item.stok ?? 0}</td>
           ${isSupplier2
-            ? `<td class="p-3">${item.deskripsi ?? "-"}</td>`
-            : `<td class="p-3">${item.expired_date ?? "-"}</td>`}
-          <td class="p-3 text-center">
+            ? `<td class="p-4 text-gray-600 text-sm">${item.deskripsi ?? "-"}</td>`
+            : `<td class="p-4 text-gray-600 text-sm">${item.expired_date ?? "-"}</td>`}
+          <td class="p-4 text-center">
             <input type="number" min="1" max="${item.stok ?? 999999}" value="1"
-                   class="qtyInput w-20 px-2 py-1 border rounded"
+                   class="qtyInput w-20 px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                    data-id="${item.id_product}">
           </td>
-          <td class="p-3 text-center">
-            <button class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+          <td class="p-4 text-center">
+            <button class="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 text-white font-medium hover:shadow-lg transition-all"
               onclick='addToCart(${JSON.stringify(item.id_product)}, ${JSON.stringify(item.nama_product)}, ${JSON.stringify(item.harga)}, ${JSON.stringify(item.stok)}, getQty("${item.id_product}"))'>
-              Tambah
+              + Tambah
             </button>
           </td>
         </tr>
       `).join("");
 
-      statusEl.textContent = `${rows.length} item ditampilkan dari sumber ${CURRENT_SOURCE}${q ? ` (filter: "${q}")` : ""}`;
+      statusEl.textContent = `${rows.length} item ditampilkan dari ${CURRENT_SOURCE}${q ? ` (filter: "${q}")` : ""}`;
     }
 
     async function load() {
@@ -347,7 +384,7 @@
         CACHE_LAST_GOOD = incoming;
         renderHeader();
         render();
-        statusEl.textContent = `Data termuat dari sumber ${CURRENT_SOURCE} (${DATA.length} item).`;
+        statusEl.textContent = `Data termuat dari ${CURRENT_SOURCE} (${DATA.length} item).`;
       } catch (e) {
         if (myLoadId !== lastLoadId) return;
         console.error(e);
@@ -359,7 +396,9 @@
         } else {
           DATA = [];
           renderHeader();
-          tbody.innerHTML = '<tr><td class="p-4 text-center text-gray-500" colspan="9">Tidak ada data.</td></tr>';
+          const isSupplier2 = CURRENT_SOURCE === 'supplier2';
+          const colCount = isSupplier2 ? 9 : 8; // menyesuaikan jumlah kolom dinamis
+          tbody.innerHTML = `<tr><td class="p-8 text-center text-gray-500" colspan="${colCount}">Tidak ada data.</td></tr>`;
         }
       } finally {
         if (myLoadId === lastLoadId) tableSkeleton.classList.add('hidden');
@@ -367,7 +406,6 @@
       await refreshCart();
     }
 
-    // ---------- Helpers ----------
     function getQty(id) {
       const el = document.querySelector(`.qtyInput[data-id="${CSS.escape(String(id))}"]`);
       let q = parseInt(el?.value || "1", 10);
@@ -376,32 +414,32 @@
       if (max && q > max) q = max;
       return q;
     }
-    function findItemById(id) {
-      return DATA.find(d => String(d.id_product) === String(id));
-    }
 
-    // ---------- Cart ----------
-    function openCart() { cartDrawer.style.transform = "translateX(0)"; }
-    function closeCart() { cartDrawer.style.transform = "translateX(100%)"; }
+    function findItemById(id) { return DATA.find(d => String(d.id_product) === String(id)); }
+
+    function openCart() { cartDrawer.style.transform = "translateX(0)"; cartOverlay.classList.remove('hidden'); }
+    function closeCart() { cartDrawer.style.transform = "translateX(100%)"; cartOverlay.classList.add('hidden'); }
 
     async function refreshCart() {
       const res = await fetch("/api/cart/", { credentials: "same-origin", headers: { "Accept": "application/json" }});
       const json = await res.json().catch(() => ({items:[], total:0}));
       const items = json.items || [];
+
       cartItemsEl.innerHTML = items.map(it => `
-        <div class="flex items-center justify-between border rounded-lg p-2">
-          <div class="min-w-0">
-            <div class="font-medium truncate">${it.nama_product}</div>
-            <div class="text-xs text-gray-500">ID: ${it.id_product} • Stok: ${it.stok}</div>
-            <div class="text-xs">${rupiah(it.harga)} × ${it.qty}</div>
+        <div class="flex items-center justify-between border-2 border-gray-200 rounded-xl p-4 hover:border-purple-300 transition-all">
+          <div class="min-w-0 flex-1">
+            <div class="font-semibold text-gray-800 truncate">${it.nama_product}</div>
+            <div class="text-xs text-gray-500 mt-1">ID: ${it.id_product} • Stok: ${it.stok}</div>
+            <div class="text-sm text-purple-600 font-medium mt-1">${rupiah(it.harga)} × ${it.qty}</div>
           </div>
-          <div class="flex items-center gap-1">
-            <button class="px-2 py-1 border rounded" onclick='updateQty(${JSON.stringify(it.id_product)}, ${Math.max(0,(it.qty-1))})'>−</button>
-            <span class="w-6 text-center">${it.qty}</span>
-            <button class="px-2 py-1 border rounded" onclick='updateQty(${JSON.stringify(it.id_product)}, ${it.qty+1})'>+</button>
+          <div class="flex items-center gap-2 ml-3">
+            <button class="w-8 h-8 border-2 border-gray-200 rounded-lg hover:bg-gray-100 font-bold transition-all" onclick='updateQty(${JSON.stringify(it.id_product)}, ${Math.max(0,(it.qty-1))})'>−</button>
+            <span class="w-8 text-center font-semibold">${it.qty}</span>
+            <button class="w-8 h-8 border-2 border-gray-200 rounded-lg hover:bg-gray-100 font-bold transition-all" onclick='updateQty(${JSON.stringify(it.id_product)}, ${it.qty+1})'>+</button>
           </div>
         </div>
-      `).join("") || '<div class="text-sm text-gray-500">Keranjang kosong.</div>';
+      `).join("") || '<div class="text-center text-gray-500 py-8">🛒<br>Keranjang kosong</div>';
+
       cartTotalEl.textContent = rupiah(json.total || 0);
       cartCountEl.textContent = items.reduce((a,b)=>a+(b.qty||0),0);
     }
@@ -419,13 +457,14 @@
         return;
       }
       await refreshCart();
-      statusEl.textContent = `Ditambahkan: ${nama_product} (x${qty})`;
+      statusEl.textContent = `✓ Ditambahkan: ${nama_product} (×${qty})`;
       openCart();
     }
 
     async function bulkAddSelected() {
       const ids = [...document.querySelectorAll(".rowChk:checked")].map(c => c.dataset.id);
-      if (!ids.length) { statusEl.textContent = "Pilih dulu itemnya."; return; }
+      if (!ids.length) { statusEl.textContent = "Pilih item terlebih dahulu"; return; }
+
       const items = ids.map(id => {
         const it = findItemById(id) || {};
         return {
@@ -446,7 +485,7 @@
       const json = await res.json().catch(()=>({}));
       if (!res.ok) { statusEl.textContent = "Gagal tambah massal: " + (json.error || res.status); return; }
       await refreshCart();
-      statusEl.textContent = `Ditambahkan ${items.length} item ke keranjang.`;
+      statusEl.textContent = `✓ ${items.length} item ditambahkan ke keranjang`;
       openCart();
     }
 
@@ -466,7 +505,6 @@
       await refreshCart();
     }
 
-    // ---------- UI helper Distributor ----------
     const show = el => el.classList.remove('hidden');
     const hide = el => el.classList.add('hidden');
 
@@ -480,16 +518,16 @@
       const feeFmt = new Intl.NumberFormat('id-ID').format(fee);
 
       return `
-        <label class="flex gap-3 items-start rounded-xl border p-3 hover:bg-gray-50 cursor-pointer">
-          <input type="radio" name="distChoice" value="${code}" class="mt-1" />
+        <label class="flex gap-4 items-start rounded-xl border-2 border-gray-200 p-4 hover:border-purple-400 hover:bg-purple-50 cursor-pointer transition-all">
+          <input type="radio" name="distChoice" value="${code}" class="mt-1 w-4 h-4" />
           <div class="flex-1">
-            <div class="flex items-center justify-between">
-              <p class="font-medium">${name}</p>
-              <p class="text-sm font-semibold">Rp ${feeFmt}</p>
+            <div class="flex items-center justify-between mb-1">
+              <p class="font-semibold text-gray-800">${name}</p>
+              <p class="text-lg font-bold text-purple-600">Rp ${feeFmt}</p>
             </div>
             <p class="text-sm text-gray-600">${service} • ${eta}</p>
-            ${note ? `<p class="text-xs text-gray-500 mt-1">${note}</p>` : ''}
-            <p class="text-xs text-gray-500">Kode: ${code}</p>
+            ${note ? `<p class="text-xs text-gray-500 mt-2 bg-gray-50 px-2 py-1 rounded">${note}</p>` : ''}
+            <p class="text-xs text-gray-400 mt-1">Kode: ${code}</p>
           </div>
         </label>
       `;
@@ -551,7 +589,6 @@
       cartDistInfo.textContent = 'Distributor dikonfirmasi. Menunggu nomor resi…';
     }
 
-    // ---------- Alur draft / polling ----------
     async function pollDistributorOptions(orderId, timeoutMs = 60000) {
       const start = Date.now();
       while (Date.now() - start < timeoutMs) {
@@ -587,19 +624,20 @@
     function renderResiInCart(info) {
       show(cartResi);
       cartResiInfo.innerHTML = `
-        <div>No. Resi: <b>${info.no_resi}</b></div>
-        <div>ETA: ${info.eta_delivery_date || "-"}</div>
-        <div>Total Pembayaran: ${rupiah(info.total_pembayaran || 0)}</div>
+        <div class="space-y-1">
+          <div>No. Resi: <b class="text-green-800">${info.no_resi}</b></div>
+          <div>ETA: <b>${info.eta_delivery_date || "-"}</b></div>
+          <div>Total Pembayaran: <b>${rupiah(info.total_pembayaran || 0)}</b></div>
+        </div>
       `;
-      cartDistInfo.textContent = "Resi diterima.";
+      cartDistInfo.textContent = "Resi diterima. Pengiriman dalam proses.";
     }
 
-    // ---------- Checkout ----------
     async function checkout() {
       const id_supplier = supplierIdInput.value?.trim();
-      if (!id_supplier) { statusEl.textContent = "Isi dulu ID Supplier."; return; }
+      if (!id_supplier) { statusEl.textContent = "⚠️ Isi dulu ID Supplier."; return; }
 
-      statusEl.textContent = "Checkout… mengirim ke supplier.";
+      statusEl.textContent = "⏳ Checkout… mengirim pesanan ke supplier.";
       const res = await fetch(BACKEND_CHECKOUT, {
         method: "POST",
         credentials: "same-origin",
@@ -608,33 +646,33 @@
       });
       const json = await res.json().catch(()=>({}));
       if (!res.ok) {
-        statusEl.textContent = "Gagal checkout: " + (json.error || res.status);
+        statusEl.textContent = "❌ Gagal checkout: " + (json.error || res.status);
         return;
       }
 
       await refreshCart();
       openCart();
 
-      statusEl.textContent = "Menunggu opsi distributor dari supplier…";
+      statusEl.textContent = "⏳ Menunggu opsi distributor dari supplier…";
       try {
         const { id_order, options } = await pollDistributorOptions();
         window.currentOrderId = id_order;
         showCartDistributor({ orderId: id_order, options, loading: false });
-        statusEl.textContent = `Opsi distributor tersedia untuk Order #${id_order}.`;
+        statusEl.textContent = `✓ Opsi distributor tersedia untuk Order #${id_order}.`;
 
         (async () => {
           const info = await pollResi(id_order);
           if (info && info.no_resi) renderResiInCart(info);
         })();
 
-        load(); // refresh katalog setelah sukses
+        load();
       } catch (e) {
-        statusEl.textContent = e.message + " • Klik 'Muat ulang' di panel distributor.";
+        statusEl.textContent = "⚠️ " + e.message + " • Klik 'Muat ulang' di panel distributor.";
         window.currentOrderId = null;
       }
     }
 
-    // ---------- Events ----------
+    // === Events ===
     searchInput.addEventListener("input", render);
     sortSel.addEventListener("change", render);
     refreshBtn.addEventListener("click", load);
@@ -645,17 +683,11 @@
     bulkAddBtn.addEventListener("click", bulkAddSelected);
     checkoutBtn.addEventListener("click", checkout);
 
-    document.getElementById('reloadDistBtn')?.addEventListener('click', () => {
-      if (window.currentOrderId) fetchAndShowDistributors(window.currentOrderId);
-    });
-    document.getElementById('reloadDistBtnEmpty')?.addEventListener('click', () => {
-      if (window.currentOrderId) fetchAndShowDistributors(window.currentOrderId);
-    });
-    document.getElementById('confirmDistBtn')?.addEventListener('click', () => {
-      if (window.currentOrderId) confirmDistributor(window.currentOrderId);
-    });
+    reloadDistBtn?.addEventListener('click', () => { if (window.currentOrderId) fetchAndShowDistributors(window.currentOrderId); });
+    reloadDistBtnEmpty?.addEventListener('click', () => { if (window.currentOrderId) fetchAndShowDistributors(window.currentOrderId); });
+    confirmDistBtn?.addEventListener('click', () => { if (window.currentOrderId) confirmDistributor(window.currentOrderId); });
 
-    // init
+    // Initial
     renderHeader();
     load();
   </script>

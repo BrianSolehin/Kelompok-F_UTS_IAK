@@ -5,8 +5,8 @@ from flask import Blueprint, request, jsonify, session
 orders_bp = Blueprint("orders", __name__)
 
 # === KONFIG API UPSTREAM (supplier) ===
-SUPPLIER_RETAIL_URL = "http://192.168.100.193:5000/api/pesanan_retail"         # POST kirim pesanan
-SUPPLIER_CHOOSE_DISTRIBUTOR_URL = "http://192.168.100.193:5000/api/pesanan_distributor"  # POST pilih distributor
+SUPPLIER_RETAIL_URL = "https://gamophyllous-margit-slipperily.ngrok-free.dev/api/pesanan_retail"      # POST kirim pesanan
+SUPPLIER_CHOOSE_DISTRIBUTOR_URL = "https://gamophyllous-margit-slipperily.ngrok-free.dev/api/pesanan_distributor"  # POST pilih distributor
 
 # === STATE SEDERHANA (in-memory) ===
 # Simpan callback draft dari supplier: { id_order: payload_callback }
