@@ -7,7 +7,7 @@
   <h1 class="text-2xl font-bold">Transaksi (POS)</h1>
 
   <!-- Katalog Produk -->
-  <div class="bg-white rounded-xl shadow-sm border p-6">
+  <div class="card-modern p-6">
     <h2 class="font-semibold mb-4 text-lg">Katalog Gudang</h2>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -18,7 +18,7 @@
       </div>
       <div>
         <label class="block text-sm text-gray-600 mb-1">Kategori</label>
-        <select id="filterKategori" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+        <select id="filterKategori" class="w-full px-3 py-2 border rounded-lg">
           <option value="">Semua</option>
           <option>Sembako</option>
           <option>Minuman</option>
@@ -45,7 +45,7 @@
   </div>
 
   <!-- Keranjang Transaksi -->
-  <div class="bg-white rounded-xl shadow-sm border p-6">
+  <div class="card-modern p-6">
     <h2 class="font-semibold mb-4 text-lg">Keranjang Transaksi</h2>
     
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -135,6 +135,5 @@
 {% endblock %}
 
 {% block body_extra %}
-<!-- Pindahkan seluruh logic JS transaksi.js ke sini jika inline, atau link ke static/js/transaksi.js -->
-<script src="/static/js/transaksi.js"></script>
+<script src="/static/transaksi.js"></script>
 {% endblock %}

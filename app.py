@@ -11,6 +11,7 @@ from sqlalchemy import text
 # --- satu-satunya instance SQLAlchemy ---
 db = SQLAlchemy()
 
+
 def create_app():
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.secret_key = "retail-secret-key"
@@ -32,31 +33,32 @@ def create_app():
     try:
         from orders import orders_bp
         app.register_blueprint(orders_bp, url_prefix="/api/orders")
-    except Exception:
-        pass
+    except Exception as e:
+        print("WARN: gagal load orders_bp:", e)
 
     try:
         from cart import cart_bp
         app.register_blueprint(cart_bp, url_prefix="/api/cart")
-    except Exception:
-        pass
+    except Exception as e:
+        print("WARN: gagal load cart_bp:", e)
 
     try:
         from supplier import supplier_bp
         app.register_blueprint(supplier_bp, url_prefix="/api/supplier")
-    except Exception:
-        pass
+    except Exception as e:
+        print("WARN: gagal load supplier_bp:", e)
 
     try:
         from supplier2 import supplier2_bp
         app.register_blueprint(supplier2_bp, url_prefix="/api/supplier2")
-    except Exception:
-        pass
+    except Exception as e:
+        print("WARN: gagal load supplier2_bp:", e)
 
-    # === POS / TRANSAKSI (penting!) ===
+    # === POS / TRANSAKSI ===
     try:
-        from transaksi import pos_bp          # <-- ini penting
-        app.register_blueprint(pos_bp)        # tanpa prefix: rute sudah lengkap di file transaksi.py
+        # Pastikan file bernama transaksi.py dan di dalamnya ada: pos_bp = Blueprint("pos", __name__)
+        from transaksi import pos_bp
+        app.register_blueprint(pos_bp)  # tanpa prefix: rute sudah lengkap di file transaksi.py
     except Exception as e:
         print("WARN: gagal load pos_bp:", e)
 
@@ -84,6 +86,12 @@ def create_app():
     def ui_gudang():
         return render_template("gudang.html")
 
+    # --- Tambahan spesifik untuk halaman POS (hindari ketabrak catch-all) ---
+    @app.get("/ui/transaksi")
+    def ui_transaksi():
+        return render_template("transaksi.html")
+
+    # Catch-all untuk render template lain dengan validasi nama
     @app.get("/ui/<path:name>")
     def ui_by_name(name: str):
         if not re.fullmatch(r"[a-zA-Z0-9_\-\/]+", name or ""):
@@ -106,7 +114,7 @@ def create_app():
 
         return render_template(tpl_name)
 
-    # ===================== API GUDANG =====================
+    # ===================== API GUDANG (pakai tabel: barang) =====================
     TABLE = "barang"
 
     def _like(q: str) -> str:
@@ -295,6 +303,7 @@ def create_app():
         return jsonify({"error": "internal server error", "detail": str(err)}), 500
 
     return app
+
 
 if __name__ == "__main__":
     app = create_app()
